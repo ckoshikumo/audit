@@ -46,12 +46,12 @@ message_ messages_[MAX_MESSAGES_];
 		totalFailedAsserts_++;							\
 		if (localFailedAsserts_ == 0) {						\
 			failedTests_++;							\
-			checkMessageBounds_();						\
+			checkMessageCount_();						\
 			snprintf(messages_[nextMessage_], MAX_MESSAGE_LENGTH_,		\
 			         "" YELLOW_ "%s" RESET_ "", __func__);			\
 			nextMessage_++;							\
 		}									\
-		checkMessageBounds_();							\
+		checkMessageCount_();							\
 		snprintf(messages_[nextMessage_], MAX_MESSAGE_LENGTH_,			\
 		         "\t%i: " msg_,							\
 		         __LINE__, ##__VA_ARGS__);					\
@@ -75,7 +75,7 @@ static inline void auditPrintFailures_(void)
 	}
 }
 
-static inline void checkMessageBounds_(void)
+static inline void checkMessageCount_(void)
 {
 	if (nextMessage_ == MAX_MESSAGES_) {
 		printf("\n\n");
