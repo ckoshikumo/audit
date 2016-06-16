@@ -84,21 +84,30 @@ static inline void checkMessageCount_(void)
 	exit(EXIT_FAILURE);
 }
 
+static inline int postface_(void)
+{
+	printf("\n\n");
+
+	if (failedTests_ == 0) {
+		printf(GREEN_ "ALL TESTS PASSED" RESET_);
+	} else {
+		printf(RED_ "TEST SUITE FAILED" RESET_);
+	}
+
+	auditPrintFailures_();
+
+	printf("%i tests (%i failed), %i assertions (%i failed)\n",
+	       totalTests_, failedTests_, totalAsserts_, totalFailedAsserts_);
+
+	return failedTests_ == 0 ? 0 : -1;
+}
+
 #define AUDIT(testSuite_)\
 	int main(void) {\
 		printf(GREEN_ "BEGIN AUDITING" RESET_ "\n");\
 		printf("Test suite: %s\n\n", __FILE__);\
 		testSuite_();\
-		printf("\n\n");\
-		if (failedTests_ == 0) {\
-			printf(GREEN_ "ALL TESTS PASSED" RESET_);\
-		} else {\
-			printf(RED_ "TEST SUITE FAILED" RESET_);\
-		}\
-		auditPrintFailures_();\
-		printf("%i tests (%i failed), %i assertions (%i failed)\n",\
-		       totalTests_, failedTests_, totalAsserts_, totalFailedAsserts_);\
-		return failedTests_ == 0 ? 0 : -1;\
+		return postface_();\
 	}
 
 #endif // _AUDIT_H_
