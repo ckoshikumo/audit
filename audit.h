@@ -48,7 +48,7 @@ auditMessage_ auditMessages_[MAX_MESSAGES_];
 			auditFailedTests_++;\
 			auditCheckMessageCount_();\
 			snprintf(auditMessages_[auditNextMessage_], MAX_MESSAGE_LENGTH_,\
-			         "" YELLOW_ "%s" RESET_ "", __func__);\
+			         YELLOW_ "%s" RESET_, __func__);\
 			auditNextMessage_++;\
 		}\
 		auditCheckMessageCount_();\
