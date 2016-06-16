@@ -83,7 +83,7 @@ static inline void auditCheckMessageCount_(void)
 	exit(EXIT_FAILURE);
 }
 
-static inline int auditPostface_(void)
+static inline void auditPostface_(void)
 {
 	printf("\n\n");
 
