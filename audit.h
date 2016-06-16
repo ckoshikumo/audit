@@ -67,22 +67,21 @@ static inline void auditRun(void (*testFn)(void))
 
 static inline void auditPrintFailures_(void)
 {
-	if (nextMessage_ > 0) {
-		for (int i = 0; i < nextMessage_; ++i) {
-			printf("%s\n", messages_[i]);
-		}
-		printf("\n");
+	if (nextMessage_ == 0 ) return;
+	for (int i = 0; i < nextMessage_; ++i) {
+		printf("%s\n", messages_[i]);
 	}
+	printf("\n");
 }
 
 static inline void checkMessageCount_(void)
 {
-	if (nextMessage_ == MAX_MESSAGES_) {
-		printf("\n\n");
-		auditPrintFailures_();
-		printf(RED_ "TOO MANY ERRORS! Aborting." RESET_ "\n");
-		exit(EXIT_FAILURE);
-	}
+	if (nextMessage_ < MAX_MESSAGES_) return;
+
+	printf("\n\n");
+	auditPrintFailures_();
+	printf(RED_ "TOO MANY ERRORS! Aborting." RESET_ "\n");
+	exit(EXIT_FAILURE);
 }
 
 #define AUDIT(testSuite_)								\
