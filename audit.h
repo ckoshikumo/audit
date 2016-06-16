@@ -88,7 +88,7 @@ static inline void checkMessageBounds_(void)
 #define AUDIT(testSuite_)								\
 	int main(void) {								\
 		printf(GREEN_ "BEGIN AUDITING" RESET_ "\n");				\
-		printf("Test suit: %s\n\n", __FILE__);					\
+		printf("Test suite: %s\n\n", __FILE__);					\
 		testSuite_();								\
 		printf("\n\n");								\
 		if (failedTests_ == 0) {						\
