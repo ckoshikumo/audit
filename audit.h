@@ -31,7 +31,7 @@ int auditCurrentDot_ = 0;
 typedef char auditMessage_[MAX_MESSAGE_LENGTH_];
 auditMessage_ auditMessages_[MAX_MESSAGES_];
 
-#define auditAssert(assert_, msg_, ...) do {\
+#define audit(assert_, msg_, ...) do {\
 		auditTotalAsserts_++;\
 		auditCurrentDot_++;\
 		if (auditCurrentDot_ == 80) {\
