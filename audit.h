@@ -36,7 +36,8 @@ int audit_current_dot = 0;
 static inline void _audit_print_failures(void)
 {
 	printf("\n\n");
-	if (audit_next_message == 0 ) return;
+	if (audit_next_message == 0 ) { return; }
+
 	for (int i = 0; i < audit_next_message; ++i) {
 		printf("%s\n", audit_messages[i]);
 	}
@@ -45,7 +46,7 @@ static inline void _audit_print_failures(void)
 
 static inline void _audit_check_message_count(void)
 {
-	if (audit_next_message < AUDIT_MAX_MESSAGES) return;
+	if (audit_next_message < AUDIT_MAX_MESSAGES) { return; }
 
 	_audit_print_failures();
 	printf(RED_ "TOO MANY ERRORS! Aborting." RESET_ "\n");
