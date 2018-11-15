@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#define MAX_MESSAGES_ 50
-#define MAX_MESSAGE_LENGTH_ 256
+#define AUDIT_MAX_MESSAGES_ 50
+#define AUDIT_MAX_MESSAGE_LENGTH_ 256
 
 #ifdef AUDIT_NO_COLORS
 #define RED_
@@ -20,93 +20,95 @@
 #define RESET_   "\x1b[0m"
 #endif
 
-int auditTotalTests_ = 0;
-int auditTotalAsserts_ = 0;
-int auditLocalFailedAsserts_ = 0;
-int auditFailedAsserts_ = 0;
-int auditFailedTests_ = 0;
-int auditNextMessage_ = 0;
-int auditCurrentDot_ = 0;
+int audit_total_tests_ = 0;
+int audit_total_asserts_ = 0;
+int audit_local_failed_asserts_ = 0;
+int audit_failed_asserts_ = 0;
+int audit_failed_tests_ = 0;
+int audit_next_message_ = 0;
+int audit_current_dot_ = 0;
 
-typedef char auditMessage_[MAX_MESSAGE_LENGTH_];
-auditMessage_ auditMessages_[MAX_MESSAGES_];
+typedef char audit_message_[AUDIT_MAX_MESSAGE_LENGTH_];
+audit_message_ audit_messages_[AUDIT_MAX_MESSAGES_];
 
-#define audit(assert_, msg_, ...) do {\
-		auditTotalAsserts_++;\
-		auditCurrentDot_++;\
-		if (auditCurrentDot_ == 80) {\
+#define AUDIT(assert_, msg_, ...) do {\
+		audit_total_asserts_++;\
+		audit_current_dot_++;\
+		if (audit_current_dot_ == 80) {\
 			printf("\n");\
-			auditCurrentDot_ = 0;\
+			audit_current_dot_ = 0;\
 		}\
 		if (assert_) {\
 			printf(GREEN_ "." RESET_);\
 			break;\
 		}\
 		printf(RED_ "F" RESET_);\
-		auditFailedAsserts_++;\
-		if (auditLocalFailedAsserts_ == 0) {\
-			auditFailedTests_++;\
-			auditCheckMessageCount_();\
-			snprintf(auditMessages_[auditNextMessage_], MAX_MESSAGE_LENGTH_,\
+		audit_failed_asserts_++;\
+		if (audit_local_failed_asserts_ == 0) {\
+			audit_failed_tests_++;\
+			audit_check_message_count_();\
+			snprintf(audit_messages_[audit_next_message_], AUDIT_MAX_MESSAGE_LENGTH_,\
 			         YELLOW_ "%s" RESET_, __func__);\
-			auditNextMessage_++;\
+			audit_next_message_++;\
 		}\
-		auditCheckMessageCount_();\
-		snprintf(auditMessages_[auditNextMessage_], MAX_MESSAGE_LENGTH_,\
+		audit_check_message_count_();\
+		snprintf(audit_messages_[audit_next_message_], AUDIT_MAX_MESSAGE_LENGTH_,\
 		         "\t%i: " msg_, __LINE__, ##__VA_ARGS__);\
-		auditNextMessage_++;\
+		audit_next_message_++;\
 	} while (0)
 
-static inline void auditRun(void (*testFn)(void))
+static inline void audit_run(void (*testFn)(void))
 {
-	auditTotalTests_++;
-	auditLocalFailedAsserts_ = 0;
+	audit_total_tests_++;
+	audit_local_failed_asserts_ = 0;
 	testFn();
 }
 
-static inline void auditPrintFailures_(void)
+static inline void audit_print_failures_(void)
 {
 	printf("\n\n");
-	if (auditNextMessage_ == 0 ) return;
-	for (int i = 0; i < auditNextMessage_; ++i) {
-		printf("%s\n", auditMessages_[i]);
+	if (audit_next_message_ == 0 ) return;
+	for (int i = 0; i < audit_next_message_; ++i) {
+		printf("%s\n", audit_messages_[i]);
 	}
 	printf("\n");
 }
 
-static inline void auditCheckMessageCount_(void)
+static inline void audit_check_message_count_(void)
 {
-	if (auditNextMessage_ < MAX_MESSAGES_) return;
+	if (audit_next_message_ < AUDIT_MAX_MESSAGES_) return;
 
-	auditPrintFailures_();
+	audit_print_failures_();
 	printf(RED_ "TOO MANY ERRORS! Aborting." RESET_ "\n");
 	exit(EXIT_FAILURE);
 }
 
-static inline void auditPostface_(void)
+static inline void audit_summary_(void)
 {
 	printf("\n\n");
 
-	if (auditFailedTests_ == 0) {
+	if (audit_failed_tests_ == 0) {
 		printf(GREEN_ "ALL TESTS PASSED" RESET_);
 	} else {
 		printf(RED_ "TEST SUITE FAILED" RESET_);
 	}
 
-	auditPrintFailures_();
+	audit_print_failures_();
 
 	printf("%i tests (%i failed), %i assertions (%i failed)\n",
-	       auditTotalTests_, auditFailedTests_,
-	       auditTotalAsserts_, auditFailedAsserts_);
+	       audit_total_tests_, audit_failed_tests_,
+	       audit_total_asserts_, audit_failed_asserts_);
 }
 
-#define AUDIT(testSuite_)\
+#define CHECK(name_) void name_(void)
+
+#define AUDIT_RUN(test_suite_)\
 	int main(void) {\
 		printf(GREEN_ "BEGIN AUDITING" RESET_ "\n");\
 		printf("Test suite: %s\n\n", __FILE__);\
-		testSuite_();\
-		auditPostface_();\
-		return auditFailedTests_ == 0 ? 0 : -1;\
+		test_suite_();\
+		audit_summary_();\
+		return audit_failed_tests_ == 0 ? 0 : -1;\
 	}
 
 #endif // _AUDIT_H_
