@@ -72,13 +72,6 @@ static inline void _audit_print_summary(void)
 
 #define CHECK(name_) void name_(void)
 
-static inline void audit_register(audit_check_fn fn)
-{
-	audit_total_tests++;
-	audit_local_failed_asserts = 0;
-	fn();
-}
-
 #define AUDIT(assert_, msg_, ...) do {\
 		audit_total_asserts++;\
 		audit_current_dot++;\
@@ -104,6 +97,13 @@ static inline void audit_register(audit_check_fn fn)
 		         "\t[%i] " msg_, __LINE__, ##__VA_ARGS__);\
 		audit_next_message++;\
 	} while (0)
+
+static inline void audit_register(audit_check_fn fn)
+{
+	audit_total_tests++;
+	audit_local_failed_asserts = 0;
+	fn();
+}
 
 #define AUDIT_RUN(test_suite_)\
 	int main(void) {\
