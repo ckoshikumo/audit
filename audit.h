@@ -49,7 +49,7 @@ static inline void _audit_check_message_count(void)
 	if (audit_next_message < AUDIT_MAX_MESSAGES) { return; }
 
 	_audit_print_failures();
-	printf(RED_ "TOO MANY ERRORS! Aborting." RESET_ "\n");
+	printf(RED_ "TOO MANY ERRORS! Aborting..." RESET_ "\n");
 	exit(EXIT_FAILURE);
 }
 
