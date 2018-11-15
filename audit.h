@@ -106,8 +106,7 @@ static inline void audit_register(audit_check_fn fn)
 
 #define AUDIT_RUN(test_suite_)\
 	int main(void) {\
-		printf(GREEN_ "START AUDITING" RESET_ "\n");\
-		printf("%s\n", __FILE__);\
+		printf(GREEN_ "START AUDITING:" RESET_ " " __FILE__ "\n");\
 		test_suite_();\
 		_audit_print_summary();\
 		return audit_failed_tests == 0 ? 0 : -1;\
