@@ -23,6 +23,8 @@
 typedef char audit_message[AUDIT_MAX_MESSAGE_LENGTH];
 audit_message audit_messages[AUDIT_MAX_MESSAGES];
 
+typedef void (*audit_check_fn)(void);
+
 int audit_total_tests = 0;
 int audit_total_asserts = 0;
 int audit_local_failed_asserts = 0;
@@ -50,7 +52,7 @@ static inline void _audit_check_message_count(void)
 	exit(EXIT_FAILURE);
 }
 
-static inline void _audit_summary(void)
+static inline void _audit_print_summary(void)
 {
 	printf("\n\n");
 
@@ -69,11 +71,11 @@ static inline void _audit_summary(void)
 
 #define CHECK(name_) void name_(void)
 
-static inline void audit_register(void (*testFn)(void))
+static inline void audit_register(audit_check_fn fn)
 {
 	audit_total_tests++;
 	audit_local_failed_asserts = 0;
-	testFn();
+	fn();
 }
 
 #define AUDIT(assert_, msg_, ...) do {\
@@ -107,7 +109,7 @@ static inline void audit_register(void (*testFn)(void))
 		printf(GREEN_ "START AUDITING" RESET_ "\n");\
 		printf("%s\n", __FILE__);\
 		test_suite_();\
-		_audit_summary();\
+		_audit_print_summary();\
 		return audit_failed_tests == 0 ? 0 : -1;\
 	}
 
