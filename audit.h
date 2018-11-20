@@ -26,14 +26,12 @@
 #define trust_setup void trust_setup_fn(void);\
 	__attribute__((constructor (101))) static void trust_setup_init(void){\
 		trust_setup_fn_ptr = trust_setup_fn;\
-	}\
-	void trust_setup_fn(void)\
+	} void trust_setup_fn(void)\
 
 #define trust_teardown void trust_teardown_fn(void);\
 	__attribute__((constructor (101))) static void trust_teardown_init(void){\
 		trust_teardown_fn_ptr = trust_teardown_fn;\
-	}\
-	void trust_teardown_fn(void)\
+	} void trust_teardown_fn(void)\
 
 #define trust(str_name__) trust_internal(str_name__, __LINE__, true)
 
@@ -73,8 +71,7 @@
 	__attribute__((constructor (103))) static void TRUST_CONCAT(trust_init_, num__)(void) {\
 		trust_register_test(str_name__, TRUST_CONCAT(trust_test__, num__), setup__);\
 		if (setup__) { trust_needs_setup = true; }\
-	} \
-	void TRUST_CONCAT(trust_test__, num__)(char *str_name)
+	} void TRUST_CONCAT(trust_test__, num__)(char *str_name)
 
 typedef void (*trust_setup_teardown)(void);
 
@@ -271,14 +268,11 @@ static inline void trust_free_resources(void) {
 	free(trust_dots);
 }
 
-int main(void);
 __attribute__((constructor (102))) static void trust_init(void) {
 	trust_init_tests_array();
 	trust_init_message_array();
 	trust_init_dots_array();
-}
-
-int main(void) {
+} int main(void) {
 	printf(TRUST_OK_ "BEGIN TRUST VERIFICATION:" TRUST_RESET_ " " __FILE__ "\n");
 	trust_run_tests();
 	trust_print_results();
