@@ -261,9 +261,11 @@ static inline void trust_run_tests(void) {
 
 	trust_v *test_array;
 
+	printf("\n");
+
 	if (trust_chosen_tests_count > 0) {
 		test_array = trust_chosen_tests;
-		printf("\nRunnings chosen tests:\n");
+		printf("Runnings chosen tests:\n");
 		for (size_t i = 0; ; i++) {
 			// Print selected tests names:
 			if (!test_array[i].name) { break; }
@@ -271,7 +273,7 @@ static inline void trust_run_tests(void) {
 		}
 	} else {
 		test_array =  trust_tests;
-		printf("Running all tests.");
+		printf("Running all tests.\n");
 	}
 
 	bool setup;
