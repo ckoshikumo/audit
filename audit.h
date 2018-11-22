@@ -289,13 +289,6 @@ static inline void trust_run_tests(void) {
 	}
 }
 
-static inline void trust_free_resources(void) {
-	free(trust_tests);
-	free(trust_chosen_tests);
-	free(trust_messages);
-	free(trust_dots);
-}
-
 static void trust_print_available_tests(void) {
 	for (size_t i = 0; ; i++) {
 		if (!trust_tests[i].name) { break; }
@@ -303,7 +296,7 @@ static void trust_print_available_tests(void) {
 	}
 }
 
-static trust_v * trust_get_test(size_t n) {
+static trust_v * trust_get_test_by_index(size_t n) {
 	if (n > trust_tests_count) { return NULL; }
 	return &trust_tests[n];
 }
@@ -317,12 +310,19 @@ static bool trust_save_test(char *test_n) {
 		exit(EXIT_FAILURE);
 	}
 
-	trust_v *test = trust_get_test(n);
+	trust_v *test = trust_get_test_by_index(n);
 	if (!test) { return false; }
 
 	trust_chosen_tests[trust_chosen_tests_count++] = *test;
 
 	return true;
+}
+
+static inline void trust_free_resources(void) {
+	free(trust_tests);
+	free(trust_chosen_tests);
+	free(trust_messages);
+	free(trust_dots);
 }
 
 __attribute__((constructor (102))) static void trust_init(void) {
@@ -331,6 +331,8 @@ __attribute__((constructor (102))) static void trust_init(void) {
 	trust_init_message_array();
 	trust_init_dots_array();
 } int main(int argc, char **argv) {
+	atexit(trust_free_resources);
+
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--list") == 0) {
 			trust_print_available_tests();
@@ -344,9 +346,10 @@ __attribute__((constructor (102))) static void trust_init(void) {
 	}
 
 	printf(TRUST_OK_ "BEGIN TRUST VERIFICATION" TRUST_RESET_ "\n");
+
 	trust_run_tests();
 	trust_print_results();
-	trust_free_resources();
+
 	return trust_failed_tests_count == 0 ? 0 : -1;
 }
 
