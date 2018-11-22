@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "../types/types.h"
 
@@ -47,10 +48,10 @@
 		if (trust_first_failed_assert) {\
 			trust_first_failed_assert = false;\
 			trust_failed_tests_count++;\
-			trust_store_message(TRUST_INFO_ "\n%s" TRUST_RESET_, str_name);\
+			trust_store_message(TRUST_INFO_ "\n%i: %s" TRUST_RESET_, this->n, this->name);\
 		}\
 		{\
-			trust_store_message("\t[%i] " msg__, __LINE__, ##__VA_ARGS__);\
+			trust_store_message("\tline %i: " msg__, __LINE__, ##__VA_ARGS__);\
 			trust_failed_asserts_count++;\
 		} \
 	} while (0)
@@ -66,12 +67,22 @@
 #define TRUST_CONCAT2(v1, v2) v1 ## v2
 #define TRUST_CONCAT(v1, v2) TRUST_CONCAT2(v1, v2)
 
+typedef struct trust_v trust_v;
+typedef void (*trust_check_fn)(trust_v *this);
+
+typedef struct trust_v {
+	char* name;
+	int n;
+	bool setup;
+	trust_check_fn fn;
+} trust_v;
+
 #define trust_internal(str_name__, num__, setup__)\
-	void TRUST_CONCAT(trust_test__, num__)(char *str_name);\
+	void TRUST_CONCAT(trust_test__, num__)(trust_v *this);\
 	__attribute__((constructor (103))) static void TRUST_CONCAT(trust_init_, num__)(void) {\
 		trust_register_test(str_name__, TRUST_CONCAT(trust_test__, num__), setup__);\
 		if (setup__) { trust_needs_setup = true; }\
-	} void TRUST_CONCAT(trust_test__, num__)(char *str_name)
+	} void TRUST_CONCAT(trust_test__, num__)(trust_v *this)
 
 typedef void (*trust_setup_teardown)(void);
 
@@ -79,17 +90,13 @@ trust_setup_teardown trust_setup_fn_ptr = NULL ;
 trust_setup_teardown trust_teardown_fn_ptr = NULL;
 bool trust_needs_setup = false;
 
-typedef void (*trust_check_fn)(char *str_name);
-
-typedef struct trust_v {
-	char* name;
-	bool setup;
-	trust_check_fn fn;
-} trust_v;
-
 trust_v *trust_tests = NULL;
 size_t trust_tests_count = 0;
 size_t trust_tests_max = 0;
+
+trust_v *trust_chosen_tests = NULL;
+size_t trust_chosen_tests_count = 0;
+size_t trust_chosen_tests_max = 0;
 
 char **trust_messages = NULL;
 size_t trust_messages_count = 0;
@@ -107,14 +114,21 @@ bool trust_first_failed_assert = true;
 static inline void trust_check_test_count(void);
 
 static inline void trust_register_test(char *name, trust_check_fn fn, bool setup) {
+	static int counter = 0;
 	trust_check_test_count();
-	trust_tests[trust_tests_count++] = (trust_v) {.name = name, .setup = setup, .fn = fn};
+	trust_tests[trust_tests_count++] = (trust_v) {.name = name, .n = counter++, .setup = setup, .fn = fn};
 }
 
 static inline void trust_init_tests_array(void) {
 	trust_tests = malloc(sizeof(trust_v) * TRUST_INITIAL_N_TESTS);
 	if (!trust_tests) { exit(EXIT_FAILURE); }
 	trust_tests_max = TRUST_INITIAL_N_TESTS;
+}
+
+static inline void trust_init_chosen_tests_array(void) {
+	trust_chosen_tests = malloc(sizeof(trust_v) * TRUST_INITIAL_N_TESTS);
+	if (!trust_chosen_tests) { exit(EXIT_FAILURE); }
+	trust_chosen_tests_max = TRUST_INITIAL_N_TESTS;
 }
 
 static inline void trust_init_message_array(void) {
@@ -130,30 +144,30 @@ static inline void trust_init_dots_array(void) {
 }
 
 static inline void trust_check_message_count(void) {
-	if (trust_messages_count == trust_messages_max) {
-		size_t new_max = trust_messages_max * 2;
-		trust_messages = realloc(trust_messages, sizeof(char*) * new_max);
-		if (!trust_messages) { exit(EXIT_FAILURE); }
-		trust_messages_max = new_max;
-	}
+	if (trust_messages_count < trust_messages_max) { return; }
+
+	size_t new_max = trust_messages_max * 2;
+	trust_messages = realloc(trust_messages, sizeof(char*) * new_max);
+	if (!trust_messages) { exit(EXIT_FAILURE); }
+	trust_messages_max = new_max;
 }
 
 static inline void trust_check_test_count(void) {
-	if (trust_tests_count == trust_tests_max) {
-		size_t new_max = trust_tests_max * 2;
-		trust_tests = realloc(trust_tests, sizeof(trust_v) * new_max);
-		if (!trust_tests) { exit(EXIT_FAILURE); }
-		trust_tests_max = new_max;
-	}
+	if (trust_tests_count < trust_tests_max) { return; }
+
+	size_t new_max = trust_tests_max * 2;
+	trust_tests = realloc(trust_tests, sizeof(trust_v) * new_max);
+	if (!trust_tests) { exit(EXIT_FAILURE); }
+	trust_tests_max = new_max;
 }
 
 static inline void trust_check_dot_count(void) {
-	if (trust_dot_count == trust_max_dots) {
-		size_t new_max = trust_max_dots * 2;
-		trust_dots = realloc(trust_dots, sizeof(char) * new_max);
-		if (!trust_dots) { exit(EXIT_FAILURE); }
-		trust_max_dots = new_max;
-	}
+	if (trust_dot_count < trust_max_dots) { return; }
+
+	size_t new_max = trust_max_dots * 2;
+	trust_dots = realloc(trust_dots, sizeof(char) * new_max);
+	if (!trust_dots) { exit(EXIT_FAILURE); }
+	trust_max_dots = new_max;
 }
 
 static inline void trust_store_message(const char *fmt, ...) {
@@ -191,6 +205,7 @@ static inline void trust_print_dots(void) {
 			printf(TRUST_FAIL_ "X" TRUST_RESET_);
 		}
 	}
+	printf("\n\n");
 }
 
 static inline void trust_print_failures(void) {
@@ -204,6 +219,7 @@ static inline void trust_print_failures(void) {
 	for (size_t i = 0; i < trust_messages_count; i++) {
 		printf("%s\n", trust_messages[i]);
 	}
+	printf("\n");
 }
 
 static inline void trust_print_summary(void) {
@@ -213,18 +229,15 @@ static inline void trust_print_summary(void) {
 		printf(TRUST_FAIL_);
 	}
 
-	printf("%zu tests (%zu failed), %zu assertions (%zu failed)" TRUST_RESET_ "\n",
+	printf("%zu tests (%zu failed), %zu assertions (%zu failed)" TRUST_RESET_ "\n\n",
 	       trust_tests_count, trust_failed_tests_count,
 	       trust_assert_count, trust_failed_asserts_count);
 }
 
 static inline void trust_print_results(void) {
 	trust_print_dots();
-	printf("\n\n");
 	trust_print_failures();
-	printf("\n");
 	trust_print_summary();
-	printf("\n");
 }
 
 static inline void trust_run_tests(void) {
@@ -246,34 +259,89 @@ static inline void trust_run_tests(void) {
 		exit(EXIT_FAILURE);
 	}
 
+	trust_v *test_array;
+
+	if (trust_chosen_tests_count > 0) {
+		test_array = trust_chosen_tests;
+		printf("\nRunnings chosen tests:\n");
+		for (size_t i = 0; ; i++) {
+			// Print selected tests names:
+			if (!test_array[i].name) { break; }
+			printf(TRUST_INFO_ "%i: %s" TRUST_RESET_ "\n", test_array[i].n, test_array[i].name);
+		}
+	} else {
+		test_array =  trust_tests;
+		printf("Running all tests.");
+	}
+
 	bool setup;
 
 	for (size_t i = 0; ; i++) {
-		if (!trust_tests[i].fn) {
-			break;
-		}
+		if (!test_array[i].fn) { break; }
 
 		trust_first_failed_assert = true;
-
-		setup = trust_tests[i].setup;
+		setup = test_array[i].setup;
 		if (setup) { trust_setup_fn_ptr(); }
-		trust_tests[i].fn(trust_tests[i].name);
+		test_array[i].fn(&trust_tests[i]);
 		if (setup) { trust_teardown_fn_ptr(); }
 	}
 }
 
 static inline void trust_free_resources(void) {
 	free(trust_tests);
+	free(trust_chosen_tests);
 	free(trust_messages);
 	free(trust_dots);
 }
 
+static void trust_print_available_tests(void) {
+	for (size_t i = 0; ; i++) {
+		if (!trust_tests[i].name) { break; }
+		printf(TRUST_INFO_ "%i: %s" TRUST_RESET_ "\n", trust_tests[i].n, trust_tests[i].name);
+	}
+}
+
+static trust_v * trust_get_test(size_t n) {
+	if (n > trust_tests_count) { return NULL; }
+	return &trust_tests[n];
+}
+
+static bool trust_save_test(char *test_n) {
+	char *end = NULL;
+	size_t n = (size_t) strtol(test_n, &end, 10);
+
+	if (*end) {
+		fprintf(stderr, "Argument can't be read as number: %s\n", test_n);
+		exit(EXIT_FAILURE);
+	}
+
+	trust_v *test = trust_get_test(n);
+	if (!test) { return false; }
+
+	trust_chosen_tests[trust_chosen_tests_count++] = *test;
+
+	return true;
+}
+
 __attribute__((constructor (102))) static void trust_init(void) {
 	trust_init_tests_array();
+	trust_init_chosen_tests_array();
 	trust_init_message_array();
 	trust_init_dots_array();
-} int main(void) {
-	printf(TRUST_OK_ "BEGIN TRUST VERIFICATION:" TRUST_RESET_ " " __FILE__ "\n");
+} int main(int argc, char **argv) {
+	for (int i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "--list") == 0) {
+			trust_print_available_tests();
+			return 0;
+		}
+
+		if (!trust_save_test(argv[i])) {
+			fprintf(stderr, "Test %s not found.\n", argv[i]);
+			exit(EXIT_FAILURE);
+		};
+	}
+
+	printf(TRUST_OK_ "BEGIN TRUST VERIFICATION" TRUST_RESET_ "\n");
 	trust_run_tests();
 	trust_print_results();
 	trust_free_resources();
