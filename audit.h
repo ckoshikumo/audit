@@ -1,356 +1,437 @@
-#ifndef _TRUST_H_
-#define _TRUST_H_
+#ifndef INCLUDE_AUDIT_H
+#define INCLUDE_AUDIT_H
 
+#include <assert.h>
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
-#include <stdbool.h>
-#include <stdarg.h>
 #include <string.h>
 
-#include "../types/types.h"
+#ifndef AUDIT_PASS_ASSERT_STR_
+#define AUDIT_PASS_ASSERT_STR_ "."
+#endif // AUDIT_PASS_ASSERT_STR_
 
-#ifdef TRUST_NO_COLORS
-#define TRUST_FAIL_
-#define TRUST_OK_
-#define TRUST_INFO_
-#define TRUST_RESET_
-#else
-#define TRUST_FAIL_  "\x1b[31m"
-#define TRUST_OK_    "\x1b[32m"
-#define TRUST_INFO_  "\x1b[33m"
-#define TRUST_RESET_ "\x1b[0m"
-#endif
+#ifndef AUDIT_FAIL_ASSERT_STR_
+#define AUDIT_FAIL_ASSERT_STR_ "X"
+#endif // AUDIT_FAIL_ASSERT_STR_
 
-// Interface:
+#ifdef AUDIT_NO_COLORS
+#define AUDIT_FAIL_
+#define AUDIT_OK_
+#define AUDIT_INFO_
+#define AUDIT_RESET_
+#else // AUDIT_NO_COLORS
+#define AUDIT_FAIL_ "\x1b[31m"
+#define AUDIT_OK_ "\x1b[32m"
+#define AUDIT_INFO_ "\x1b[33m"
+#define AUDIT_RESET_ "\x1b[0m"
+#endif // AUDIT_NO_COLORS
 
-#define trust_setup void trust_setup_fn(void);\
-	__attribute__((constructor (101))) static void trust_setup_init(void){\
-		trust_setup_fn_ptr = trust_setup_fn;\
-	} void trust_setup_fn(void)\
+// INTERFACE:
 
-#define trust_teardown void trust_teardown_fn(void);\
-	__attribute__((constructor (101))) static void trust_teardown_init(void){\
-		trust_teardown_fn_ptr = trust_teardown_fn;\
-	} void trust_teardown_fn(void)\
+#define audit_setup                                                                                \
+	void audit_setup_fn(void);                                                                 \
+	__attribute__((constructor)) static void audit_setup_init(void)                            \
+	{                                                                                          \
+		audit_setup_fn_ptr = audit_setup_fn;                                               \
+	}                                                                                          \
+	void audit_setup_fn(void)
 
-#define trust(str_name__) trust_internal(str_name__, __LINE__, true)
+#define audit_teardown                                                                             \
+	void audit_teardown_fn(void);                                                              \
+	__attribute__((constructor)) static void audit_teardown_init(void)                         \
+	{                                                                                          \
+		audit_teardown_fn_ptr = audit_teardown_fn;                                         \
+	}                                                                                          \
+	void audit_teardown_fn(void)
 
-#define trust_direct(str_name__) trust_internal(str_name__, __LINE__, false)
+#define audit(str_name__) audit_internal(str_name__, __LINE__, true)
 
-#define verify(assert__, msg__, ...) do {\
-		trust_assert_count++;\
-		if (assert__) { \
-			trust_store_dot(true);\
-			break;\
-		} \
-		trust_store_dot(false);\
-		if (trust_first_failed_assert) {\
-			trust_first_failed_assert = false;\
-			trust_failed_tests_count++;\
-			trust_store_message(TRUST_INFO_ "\n%i: %s" TRUST_RESET_, this->n, this->name);\
-		}\
-		{\
-			trust_store_message("\tline %i: " msg__, __LINE__, ##__VA_ARGS__);\
-			trust_failed_asserts_count++;\
-		} \
+#define audit_direct(str_name__) audit_internal(str_name__, __LINE__, false)
+
+// #define review_eq(a__, b__, msg__, ...)\
+   // review(a__ == b__,)
+
+#define review(assert__, msg__, ...)                                                               \
+	do {                                                                                       \
+		audit_assert_count++;                                                              \
+		if (assert__) {                                                                    \
+			audit_store_assert_result(true);                                           \
+			break;                                                                     \
+		}                                                                                  \
+		audit_store_assert_result(false);                                                  \
+		if (audit_first_failed_assert) {                                                   \
+			audit_first_failed_assert = false;                                         \
+			audit_failed_tests_count++;                                                \
+			audit_store_message(AUDIT_INFO_ "\n%i: %s" AUDIT_RESET_, this->n,          \
+					    this->name);                                           \
+		}                                                                                  \
+		{                                                                                  \
+			audit_store_message("\tline %i: " msg__, __LINE__, ##__VA_ARGS__);         \
+			audit_failed_asserts_count++;                                              \
+		}                                                                                  \
 	} while (0)
 
-// Internals:
+// IMPLEMENTATION:
 
 // These are not super relevant; they're just some initial values.
-// Trust will resize the arrays as needed.
-#define TRUST_INITIAL_N_TESTS 100
-#define TRUST_INITIAL_N_ASSERTS 100
-#define TRUST_INITIAL_N_MESSAGES 50
+// Audit will resize the arrays as needed.
+#define AUDIT_INITIAL_N_TESTS 100
+#define AUDIT_INITIAL_N_ASSERTS 100
+#define AUDIT_INITIAL_N_MESSAGES 50
 
-#define TRUST_CONCAT2(v1, v2) v1 ## v2
-#define TRUST_CONCAT(v1, v2) TRUST_CONCAT2(v1, v2)
+#define AUDIT_CONCAT2(v1, v2) v1##v2
+#define AUDIT_CONCAT(v1, v2) AUDIT_CONCAT2(v1, v2)
 
-typedef struct trust_v trust_v;
-typedef void (*trust_check_fn)(trust_v *this);
+typedef struct audit_v audit_v;
+typedef void (*audit_check_fn)(audit_v *this);
 
-typedef struct trust_v {
-	char* name;
+typedef struct audit_v {
+	char *name;
 	int n;
 	bool setup;
-	trust_check_fn fn;
-} trust_v;
+	audit_check_fn fn;
+} audit_v;
 
-#define trust_internal(str_name__, num__, setup__)\
-	void TRUST_CONCAT(trust_test__, num__)(trust_v *this);\
-	__attribute__((constructor (103))) static void TRUST_CONCAT(trust_init_, num__)(void) {\
-		trust_register_test(str_name__, TRUST_CONCAT(trust_test__, num__), setup__);\
-		if (setup__) { trust_needs_setup = true; }\
-	} void TRUST_CONCAT(trust_test__, num__)(trust_v *this)
+#define audit_internal(str_name__, line__, setup__)                                                \
+	void AUDIT_CONCAT(audit_test__, line__)(audit_v * this);                                   \
+	__attribute__((constructor)) static void AUDIT_CONCAT(audit_init_, line__)(void)           \
+	{                                                                                          \
+		audit_register_test(str_name__, AUDIT_CONCAT(audit_test__, line__), setup__);      \
+		if (setup__) {                                                                     \
+			audit_needs_setup = true;                                                  \
+		}                                                                                  \
+	}                                                                                          \
+	void AUDIT_CONCAT(audit_test__, line__)(audit_v * this)
 
-typedef void (*trust_setup_teardown)(void);
+typedef void (*audit_setup_teardown)(void);
 
-trust_setup_teardown trust_setup_fn_ptr = NULL ;
-trust_setup_teardown trust_teardown_fn_ptr = NULL;
-bool trust_needs_setup = false;
+static audit_setup_teardown audit_setup_fn_ptr = NULL;
+static audit_setup_teardown audit_teardown_fn_ptr = NULL;
 
-trust_v *trust_tests = NULL;
-size_t trust_tests_count = 0;
-size_t trust_tests_max = 0;
+static bool audit_needs_setup = false;
 
-trust_v *trust_chosen_tests = NULL;
-size_t trust_chosen_tests_count = 0;
-size_t trust_chosen_tests_max = 0;
+static audit_v *audit_tests = NULL;
+static size_t audit_tests_count = 0;
+static size_t audit_tests_max = 0;
 
-char **trust_messages = NULL;
-size_t trust_messages_count = 0;
-size_t trust_messages_max = 0;
+static audit_v *audit_chosen_tests = NULL;
+static size_t audit_chosen_tests_count = 0;
+static size_t audit_chosen_tests_max = 0;
 
-char *trust_dots = NULL;
-size_t trust_dot_count = 0;
-size_t trust_max_dots = 0;
+static char **audit_messages = NULL;
+static size_t audit_messages_count = 0;
+static size_t audit_messages_max = 0;
 
-size_t trust_assert_count = 0;
-size_t trust_failed_tests_count = 0;
-size_t trust_failed_asserts_count = 0;
-bool trust_first_failed_assert = true;
+static char *audit_assert_results = NULL;
+static size_t audit_assert_results_count = 0;
+static size_t audit_max_assert_results = 0;
 
-static inline void trust_check_test_count(void);
+static size_t audit_assert_count = 0;
+static size_t audit_failed_tests_count = 0;
+static size_t audit_failed_asserts_count = 0;
+static bool audit_first_failed_assert = true;
 
-static inline void trust_register_test(char *name, trust_check_fn fn, bool setup) {
+static inline void audit_check_test_count(void);
+
+static inline void audit_register_test(char *name, audit_check_fn fn, bool setup)
+{
 	static int counter = 0;
-	trust_check_test_count();
-	trust_tests[trust_tests_count++] = (trust_v) {.name = name, .n = counter++, .setup = setup, .fn = fn};
+	audit_check_test_count();
+	audit_tests[audit_tests_count++] =
+	    (audit_v){.name = name, .n = counter++, .setup = setup, .fn = fn};
 }
 
-static inline void trust_init_tests_array(void) {
-	trust_tests = malloc(sizeof(trust_v) * TRUST_INITIAL_N_TESTS);
-	if (!trust_tests) { exit(EXIT_FAILURE); }
-	trust_tests_max = TRUST_INITIAL_N_TESTS;
+static inline void audit_init_tests_array(void)
+{
+	audit_tests = malloc(sizeof(audit_v) * AUDIT_INITIAL_N_TESTS);
+	if (!audit_tests) {
+		exit(EXIT_FAILURE);
+	}
+	audit_tests_max = AUDIT_INITIAL_N_TESTS;
 }
 
-static inline void trust_init_chosen_tests_array(void) {
-	trust_chosen_tests = malloc(sizeof(trust_v) * TRUST_INITIAL_N_TESTS);
-	if (!trust_chosen_tests) { exit(EXIT_FAILURE); }
-	trust_chosen_tests_max = TRUST_INITIAL_N_TESTS;
+static inline void audit_init_chosen_tests_array(void)
+{
+	audit_chosen_tests = malloc(sizeof(audit_v) * AUDIT_INITIAL_N_TESTS);
+	if (!audit_chosen_tests) {
+		exit(EXIT_FAILURE);
+	}
+	audit_chosen_tests_max = AUDIT_INITIAL_N_TESTS;
 }
 
-static inline void trust_init_message_array(void) {
-	trust_messages = malloc(sizeof(char*) * TRUST_INITIAL_N_MESSAGES);
-	if (!trust_messages) { exit(EXIT_FAILURE); }
-	trust_messages_max = TRUST_INITIAL_N_MESSAGES;
+static inline void audit_init_message_array(void)
+{
+	audit_messages = malloc(sizeof(char *) * AUDIT_INITIAL_N_MESSAGES);
+	if (!audit_messages) {
+		exit(EXIT_FAILURE);
+	}
+	audit_messages_max = AUDIT_INITIAL_N_MESSAGES;
 }
 
-static inline void trust_init_dots_array(void) {
-	trust_dots = malloc(sizeof(char) * TRUST_INITIAL_N_ASSERTS);
-	if (!trust_dots) { exit(EXIT_FAILURE); }
-	trust_max_dots = TRUST_INITIAL_N_ASSERTS;
+static inline void audit_init_assert_results_array(void)
+{
+	audit_assert_results = malloc(sizeof(bool) * AUDIT_INITIAL_N_ASSERTS);
+	if (!audit_assert_results) {
+		exit(EXIT_FAILURE);
+	}
+	audit_max_assert_results = AUDIT_INITIAL_N_ASSERTS;
 }
 
-static inline void trust_check_message_count(void) {
-	if (trust_messages_count < trust_messages_max) { return; }
+static inline void audit_check_message_count(void)
+{
+	if (audit_messages_count < audit_messages_max) {
+		return;
+	}
 
-	size_t new_max = trust_messages_max * 2;
-	trust_messages = realloc(trust_messages, sizeof(char*) * new_max);
-	if (!trust_messages) { exit(EXIT_FAILURE); }
-	trust_messages_max = new_max;
+	size_t new_max = audit_messages_max * 2;
+	audit_messages = realloc(audit_messages, sizeof(char *) * new_max);
+	if (!audit_messages) {
+		exit(EXIT_FAILURE);
+	}
+	audit_messages_max = new_max;
 }
 
-static inline void trust_check_test_count(void) {
-	if (trust_tests_count < trust_tests_max) { return; }
+static inline void audit_check_test_count(void)
+{
+	if (audit_tests_count < audit_tests_max) {
+		return;
+	}
 
-	size_t new_max = trust_tests_max * 2;
-	trust_tests = realloc(trust_tests, sizeof(trust_v) * new_max);
-	if (!trust_tests) { exit(EXIT_FAILURE); }
-	trust_tests_max = new_max;
+	size_t new_max = audit_tests_max * 2;
+	audit_tests = realloc(audit_tests, sizeof(audit_v) * new_max);
+	if (!audit_tests) {
+		exit(EXIT_FAILURE);
+	}
+	audit_tests_max = new_max;
 }
 
-static inline void trust_check_dot_count(void) {
-	if (trust_dot_count < trust_max_dots) { return; }
+static inline void audit_check_assert_result_count(void)
+{
+	if (audit_assert_results_count < audit_max_assert_results) {
+		return;
+	}
 
-	size_t new_max = trust_max_dots * 2;
-	trust_dots = realloc(trust_dots, sizeof(char) * new_max);
-	if (!trust_dots) { exit(EXIT_FAILURE); }
-	trust_max_dots = new_max;
+	size_t new_max = audit_max_assert_results * 2;
+	audit_assert_results = realloc(audit_assert_results, sizeof(bool) * new_max);
+	if (!audit_assert_results) {
+		exit(EXIT_FAILURE);
+	}
+	audit_max_assert_results = new_max;
 }
 
-static inline void trust_store_message(const char *fmt, ...) {
-	trust_check_message_count();
+static inline void audit_store_message(const char *fmt, ...)
+{
+	audit_check_message_count();
 
-	va_list args, copy;
+	va_list args, args_copy;
 	va_start(args, fmt);
-	va_copy(copy, args);
-
-	size_t s = vsnprintf(NULL, 0, fmt, copy) + 1;
-	va_end(copy);
+	va_copy(args_copy, args);
+	size_t s = (size_t)vsnprintf(NULL, 0, fmt, args_copy) + 1;
+	va_end(args_copy);
 
 	char *str = malloc(s);
+	if (!str) {
+		exit(EXIT_FAILURE);
+	}
+
 	vsnprintf(str, s, fmt, args);
 	va_end(args);
 
-	trust_messages[trust_messages_count++] = str;
+	audit_messages[audit_messages_count++] = str;
 }
 
-static inline void trust_store_dot(bool ok) {
-	trust_check_dot_count();
-
-	char dot = ok ? '.' : 'X';
-	trust_dots[trust_dot_count++] = dot;
+static inline void audit_store_assert_result(bool res)
+{
+	audit_check_assert_result_count();
+	audit_assert_results[audit_assert_results_count++] = res;
 }
 
-static inline void trust_print_dots(void) {
-	for (size_t i = 0; i < trust_dot_count; i++) {
+static inline void audit_print_dots(void)
+{
+	for (size_t i = 0; i < audit_assert_results_count; i++) {
 		if (i % 80 == 0) {
 			printf("\n");
 		}
-		if (trust_dots[i] == '.') {
-			printf(TRUST_OK_ "." TRUST_RESET_);
+
+		if (audit_assert_results[i]) {
+			printf(AUDIT_OK_ AUDIT_PASS_ASSERT_STR_ AUDIT_RESET_);
 		} else {
-			printf(TRUST_FAIL_ "X" TRUST_RESET_);
+			printf(AUDIT_FAIL_ AUDIT_FAIL_ASSERT_STR_ AUDIT_RESET_);
 		}
 	}
 	printf("\n\n");
 }
 
-static inline void trust_print_failures(void) {
-	if (trust_failed_tests_count == 0) {
-		printf(TRUST_OK_ "TRUST WAS UPHELD\n" TRUST_RESET_);
+static inline void audit_print_failures(void)
+{
+	if (audit_failed_tests_count == 0) {
+		printf(AUDIT_OK_ "AUDIT OK\n" AUDIT_RESET_);
 		return;
 	}
 
-	printf(TRUST_FAIL_ "TRUST WAS BROKEN\n" TRUST_RESET_);
+	printf(AUDIT_FAIL_ "AUDIT FAILED\n" AUDIT_RESET_);
 
-	for (size_t i = 0; i < trust_messages_count; i++) {
-		printf("%s\n", trust_messages[i]);
+	for (size_t i = 0; i < audit_messages_count; i++) {
+		printf("%s\n", audit_messages[i]);
 	}
 	printf("\n");
 }
 
-static inline void trust_print_summary(void) {
-	if (trust_failed_tests_count == 0) {
-		printf(TRUST_OK_);
+static inline void audit_print_summary(void)
+{
+	if (audit_failed_tests_count == 0) {
+		printf(AUDIT_OK_);
 	} else {
-		printf(TRUST_FAIL_);
+		printf(AUDIT_FAIL_);
 	}
 
-	printf("%zu tests (%zu failed), %zu assertions (%zu failed)" TRUST_RESET_ "\n\n",
-	       trust_tests_count, trust_failed_tests_count,
-	       trust_assert_count, trust_failed_asserts_count);
+	printf("%zu tests (%zu failed), %zu assertions (%zu failed)" AUDIT_RESET_ "\n\n",
+	       audit_tests_count, audit_failed_tests_count, audit_assert_count,
+	       audit_failed_asserts_count);
 }
 
-static inline void trust_print_results(void) {
-	trust_print_dots();
-	trust_print_failures();
-	trust_print_summary();
+static inline void audit_print_results(void)
+{
+	audit_print_dots();
+	audit_print_failures();
+	audit_print_summary();
 }
 
-static inline void trust_run_tests(void) {
-	if (trust_needs_setup && !trust_setup_fn_ptr && !trust_teardown_fn_ptr) {
-		fprintf(stderr, "\n" TRUST_FAIL_ "ERROR: No setup or teardown functions provided!"
-		        TRUST_RESET_ "\n\n");
+static inline void audit_run_tests(void)
+{
+	if (audit_needs_setup && !audit_setup_fn_ptr && !audit_teardown_fn_ptr) {
+		fprintf(stderr, "\n" AUDIT_FAIL_ "ERROR: No setup or teardown functions "
+				"provided." AUDIT_RESET_ "\n\n");
 		exit(EXIT_FAILURE);
 	}
 
-	if (trust_needs_setup && !trust_setup_fn_ptr) {
-		fprintf(stderr, "\n" TRUST_FAIL_ "ERROR: No setup function provided!"
-		        TRUST_RESET_ "\n\n");
+	if (audit_needs_setup && !audit_setup_fn_ptr) {
+		fprintf(stderr,
+			"\n" AUDIT_FAIL_ "ERROR: No setup function provided." AUDIT_RESET_ "\n\n");
 		exit(EXIT_FAILURE);
 	}
 
-	if (trust_needs_setup && !trust_teardown_fn_ptr) {
-		fprintf(stderr, "\n" TRUST_FAIL_ "ERROR: No teardown function provided!"
-		        TRUST_RESET_ "\n\n");
+	if (audit_needs_setup && !audit_teardown_fn_ptr) {
+		fprintf(stderr, "\n" AUDIT_FAIL_
+				"ERROR: No teardown function provided." AUDIT_RESET_ "\n\n");
 		exit(EXIT_FAILURE);
 	}
 
-	trust_v *test_array;
+	audit_v *test_array;
 
 	printf("\n");
 
-	if (trust_chosen_tests_count > 0) {
-		test_array = trust_chosen_tests;
-		printf("Runnings chosen tests:\n");
-		for (size_t i = 0; ; i++) {
-			// Print selected tests names:
-			if (!test_array[i].name) { break; }
-			printf(TRUST_INFO_ "%i: %s" TRUST_RESET_ "\n", test_array[i].n, test_array[i].name);
+	if (audit_chosen_tests_count > 0) {
+		test_array = audit_chosen_tests;
+		printf("Reviewing selected:\n");
+		for (size_t i = 0;; i++) {
+			if (!test_array[i].name) {
+				break;
+			}
+			printf(AUDIT_INFO_ "%i: %s" AUDIT_RESET_ "\n", test_array[i].n,
+			       test_array[i].name);
 		}
 	} else {
-		test_array =  trust_tests;
-		printf("Running all tests.\n");
+		test_array = audit_tests;
+		printf("Reviewing all.\n");
 	}
 
 	bool setup;
 
-	for (size_t i = 0; ; i++) {
-		if (!test_array[i].fn) { break; }
+	for (size_t i = 0;; i++) {
+		if (!test_array[i].fn) {
+			break;
+		}
 
-		trust_first_failed_assert = true;
+		audit_first_failed_assert = true;
 		setup = test_array[i].setup;
-		if (setup) { trust_setup_fn_ptr(); }
-		test_array[i].fn(&trust_tests[i]);
-		if (setup) { trust_teardown_fn_ptr(); }
+		if (setup) {
+			audit_setup_fn_ptr();
+		}
+		test_array[i].fn(&audit_tests[i]);
+		if (setup) {
+			audit_teardown_fn_ptr();
+		}
 	}
 }
 
-static void trust_print_available_tests(void) {
-	for (size_t i = 0; ; i++) {
-		if (!trust_tests[i].name) { break; }
-		printf(TRUST_INFO_ "%i: %s" TRUST_RESET_ "\n", trust_tests[i].n, trust_tests[i].name);
+static void audit_print_available_tests(void)
+{
+	for (size_t i = 0;; i++) {
+		if (!audit_tests[i].name) {
+			break;
+		}
+		printf(AUDIT_INFO_ "%i: %s" AUDIT_RESET_ "\n", audit_tests[i].n,
+		       audit_tests[i].name);
 	}
 }
 
-static trust_v * trust_get_test_by_index(size_t n) {
-	if (n > trust_tests_count) { return NULL; }
-	return &trust_tests[n];
+static audit_v *audit_get_test_by_index(size_t n)
+{
+	if (n > audit_tests_count) {
+		return NULL;
+	}
+	return &audit_tests[n];
 }
 
-static bool trust_save_test(char *test_n) {
+static bool audit_save_test(char *test_n)
+{
 	char *end = NULL;
-	size_t n = (size_t) strtol(test_n, &end, 10);
+	size_t n = (size_t)strtol(test_n, &end, 10);
 
 	if (*end) {
 		fprintf(stderr, "Argument can't be read as number: %s\n", test_n);
 		exit(EXIT_FAILURE);
 	}
 
-	trust_v *test = trust_get_test_by_index(n);
-	if (!test) { return false; }
+	audit_v *test = audit_get_test_by_index(n);
+	if (!test) {
+		return false;
+	}
 
-	trust_chosen_tests[trust_chosen_tests_count++] = *test;
-
+	audit_chosen_tests[audit_chosen_tests_count++] = *test;
 	return true;
 }
 
-static inline void trust_free_resources(void) {
-	free(trust_tests);
-	free(trust_chosen_tests);
-	free(trust_messages);
-	free(trust_dots);
+static inline void audit_free_resources(void)
+{
+	free(audit_tests);
+	free(audit_chosen_tests);
+	free(audit_messages);
+	free(audit_assert_results);
 }
 
-__attribute__((constructor (102))) static void trust_init(void) {
-	trust_init_tests_array();
-	trust_init_chosen_tests_array();
-	trust_init_message_array();
-	trust_init_dots_array();
-} int main(int argc, char **argv) {
-	atexit(trust_free_resources);
+__attribute__((constructor)) static void audit_init(void)
+{
+	audit_init_tests_array();
+	audit_init_chosen_tests_array();
+	audit_init_message_array();
+	audit_init_assert_results_array();
+}
+int main(int argc, char **argv)
+{
+	atexit(audit_free_resources);
 
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--list") == 0) {
-			trust_print_available_tests();
+			audit_print_available_tests();
 			return 0;
 		}
 
-		if (!trust_save_test(argv[i])) {
+		if (!audit_save_test(argv[i])) {
 			fprintf(stderr, "Test %s not found.\n", argv[i]);
 			exit(EXIT_FAILURE);
 		};
 	}
 
-	printf(TRUST_OK_ "BEGIN TRUST VERIFICATION" TRUST_RESET_ "\n");
+	printf(AUDIT_OK_ "AUDIT START" AUDIT_RESET_ "\n");
 
-	trust_run_tests();
-	trust_print_results();
+	audit_run_tests();
+	audit_print_results();
 
-	return trust_failed_tests_count == 0 ? 0 : -1;
+	return audit_failed_tests_count == 0 ? 0 : -1;
 }
 
-#endif // _TRUST_H_
+#endif // INCLUDE_AUDIT_H
