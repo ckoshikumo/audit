@@ -115,6 +115,12 @@ extern size_t audit_failed_tests_count;
 extern size_t audit_failed_asserts_count;
 extern bool audit_first_failed_assert;
 
+void audit_register_test(char *name, audit_check_fn fn, audit_setup_teardown setup,
+			 audit_setup_teardown teardown);
+void audit_store_message(const char *fmt, ...);
+void audit_store_assert_result(bool res);
+void audit_check_test_count(void);
+
 #endif // INCLUDE_AUDIT_H
 
 #ifdef AUDIT_IMPLEMENTATION
@@ -140,10 +146,8 @@ size_t audit_failed_tests_count = 0;
 size_t audit_failed_asserts_count = 0;
 bool audit_first_failed_assert = true;
 
-static inline void audit_check_test_count(void);
-
-static inline void audit_register_test(char *name, audit_check_fn fn, audit_setup_teardown setup,
-				       audit_setup_teardown teardown)
+void audit_register_test(char *name, audit_check_fn fn, audit_setup_teardown setup,
+			 audit_setup_teardown teardown)
 {
 	static int counter = 0;
 	audit_check_test_count();
@@ -151,43 +155,7 @@ static inline void audit_register_test(char *name, audit_check_fn fn, audit_setu
 	    (audit_v){.name = name, .n = counter++, .fn = fn, .setup = setup, .teardown = teardown};
 }
 
-static inline void audit_init_tests_array(void)
-{
-	audit_tests = malloc(sizeof(audit_v) * AUDIT_INITIAL_N_TESTS);
-	if (!audit_tests) {
-		exit(EXIT_FAILURE);
-	}
-	audit_tests_max = AUDIT_INITIAL_N_TESTS;
-}
-
-static inline void audit_init_chosen_tests_array(void)
-{
-	audit_chosen_tests = malloc(sizeof(audit_v) * AUDIT_INITIAL_N_TESTS);
-	if (!audit_chosen_tests) {
-		exit(EXIT_FAILURE);
-	}
-	audit_chosen_tests_max = AUDIT_INITIAL_N_TESTS;
-}
-
-static inline void audit_init_message_array(void)
-{
-	audit_messages = malloc(sizeof(char *) * AUDIT_INITIAL_N_MESSAGES);
-	if (!audit_messages) {
-		exit(EXIT_FAILURE);
-	}
-	audit_messages_max = AUDIT_INITIAL_N_MESSAGES;
-}
-
-static inline void audit_init_assert_results_array(void)
-{
-	audit_assert_results = malloc(sizeof(bool) * AUDIT_INITIAL_N_ASSERTS);
-	if (!audit_assert_results) {
-		exit(EXIT_FAILURE);
-	}
-	audit_max_assert_results = AUDIT_INITIAL_N_ASSERTS;
-}
-
-static inline void audit_check_message_count(void)
+void audit_check_message_count(void)
 {
 	if (audit_messages_count < audit_messages_max) {
 		return;
@@ -201,7 +169,7 @@ static inline void audit_check_message_count(void)
 	audit_messages_max = new_max;
 }
 
-static inline void audit_check_test_count(void)
+void audit_check_test_count(void)
 {
 	if (audit_tests_count < audit_tests_max) {
 		return;
@@ -215,7 +183,7 @@ static inline void audit_check_test_count(void)
 	audit_tests_max = new_max;
 }
 
-static inline void audit_check_assert_result_count(void)
+void audit_check_assert_result_count(void)
 {
 	if (audit_assert_results_count < audit_max_assert_results) {
 		return;
@@ -229,7 +197,7 @@ static inline void audit_check_assert_result_count(void)
 	audit_max_assert_results = new_max;
 }
 
-static inline void audit_store_message(const char *fmt, ...)
+void audit_store_message(const char *fmt, ...)
 {
 	audit_check_message_count();
 
@@ -250,13 +218,13 @@ static inline void audit_store_message(const char *fmt, ...)
 	audit_messages[audit_messages_count++] = str;
 }
 
-static inline void audit_store_assert_result(bool res)
+void audit_store_assert_result(bool res)
 {
 	audit_check_assert_result_count();
 	audit_assert_results[audit_assert_results_count++] = res;
 }
 
-static inline void audit_print_dots(void)
+void audit_print_dots(void)
 {
 	for (size_t i = 0; i < audit_assert_results_count; i++) {
 		if (i % 80 == 0) {
@@ -272,7 +240,7 @@ static inline void audit_print_dots(void)
 	printf("\n\n");
 }
 
-static inline void audit_print_failures(void)
+void audit_print_failures(void)
 {
 	if (audit_failed_tests_count == 0) {
 		printf(AUDIT_OK_ "AUDIT OK\n" AUDIT_RESET_);
@@ -287,7 +255,7 @@ static inline void audit_print_failures(void)
 	printf("\n");
 }
 
-static inline void audit_print_summary(void)
+void audit_print_summary(void)
 {
 	if (audit_failed_tests_count == 0) {
 		printf(AUDIT_OK_);
@@ -300,14 +268,14 @@ static inline void audit_print_summary(void)
 	       audit_failed_asserts_count);
 }
 
-static inline void audit_print_results(void)
+void audit_print_results(void)
 {
 	audit_print_dots();
 	audit_print_failures();
 	audit_print_summary();
 }
 
-static inline void audit_run_tests(void)
+void audit_run_tests(void)
 {
 	printf("\n");
 	audit_v *test_array;
@@ -351,7 +319,7 @@ static inline void audit_run_tests(void)
 	}
 }
 
-static void audit_print_available_tests(void)
+void audit_print_available_tests(void)
 {
 	for (size_t i = 0;; i++) {
 		if (!audit_tests[i].name) {
@@ -362,7 +330,7 @@ static void audit_print_available_tests(void)
 	}
 }
 
-static audit_v *audit_get_test_by_index(size_t n)
+audit_v *audit_get_test_by_index(size_t n)
 {
 	if (n > audit_tests_count) {
 		return NULL;
@@ -370,7 +338,7 @@ static audit_v *audit_get_test_by_index(size_t n)
 	return &audit_tests[n];
 }
 
-static bool audit_save_test(char *test_n)
+bool audit_save_test(char *test_n)
 {
 	char *end = NULL;
 	size_t n = (size_t)strtol(test_n, &end, 10);
@@ -389,7 +357,7 @@ static bool audit_save_test(char *test_n)
 	return true;
 }
 
-static inline void audit_free_resources(void)
+void audit_free_resources(void)
 {
 	free(audit_tests);
 	free(audit_chosen_tests);
@@ -399,10 +367,21 @@ static inline void audit_free_resources(void)
 
 __attribute__((constructor)) static void audit_init(void)
 {
-	audit_init_tests_array();
-	audit_init_chosen_tests_array();
-	audit_init_message_array();
-	audit_init_assert_results_array();
+	audit_tests = malloc(sizeof(audit_v) * AUDIT_INITIAL_N_TESTS);
+	audit_tests_max = AUDIT_INITIAL_N_TESTS;
+
+	audit_chosen_tests = malloc(sizeof(audit_v) * AUDIT_INITIAL_N_TESTS);
+	audit_chosen_tests_max = AUDIT_INITIAL_N_TESTS;
+
+	audit_messages = malloc(sizeof(char *) * AUDIT_INITIAL_N_MESSAGES);
+	audit_messages_max = AUDIT_INITIAL_N_MESSAGES;
+
+	audit_assert_results = malloc(sizeof(bool) * AUDIT_INITIAL_N_ASSERTS);
+	audit_max_assert_results = AUDIT_INITIAL_N_ASSERTS;
+
+	if (!audit_tests || !audit_chosen_tests || !audit_messages || !audit_assert_results) {
+		exit(EXIT_FAILURE);
+	}
 }
 int main(int argc, char **argv)
 {
