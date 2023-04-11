@@ -98,7 +98,7 @@ extern audit_v *audit_tests;
 extern size_t audit_tests_count;
 extern size_t audit_tests_max;
 
-extern audit_v *audit_chosen_tests;
+extern size_t *audit_chosen_tests;
 extern size_t audit_chosen_tests_count;
 extern size_t audit_chosen_tests_max;
 
@@ -129,7 +129,7 @@ audit_v *audit_tests = NULL;
 size_t audit_tests_count = 0;
 size_t audit_tests_max = 0;
 
-audit_v *audit_chosen_tests = NULL;
+size_t *audit_chosen_tests = NULL;
 size_t audit_chosen_tests_count = 0;
 size_t audit_chosen_tests_max = 0;
 
@@ -275,47 +275,56 @@ void audit_print_results(void)
 	audit_print_summary();
 }
 
-void audit_run_tests(void)
+void audit_run_test(size_t test_n)
 {
-	printf("\n");
-	audit_v *test_array;
-
-	if (audit_chosen_tests_count > 0) {
-		test_array = audit_chosen_tests;
-		printf("Running selected tests:\n");
-		for (size_t i = 0;; i++) {
-			if (!test_array[i].name) {
-				break;
-			}
-			printf(AUDIT_INFO_ "%i: %s" AUDIT_RESET_ "\n", test_array[i].n,
-			       test_array[i].name);
-		}
-	} else {
-		test_array = audit_tests;
-		printf("Running all tests.\n");
-	}
-
 	audit_setup_teardown setup;
 	audit_setup_teardown teardown;
 
-	for (size_t i = 0;; i++) {
-		if (!test_array[i].fn) {
-			break;
+	audit_first_failed_assert = true;
+	setup = audit_tests[test_n].setup;
+	teardown = audit_tests[test_n].teardown;
+
+	if (setup) {
+		setup();
+	}
+
+	audit_tests[test_n].fn(&audit_tests[test_n]);
+
+	if (teardown) {
+		teardown();
+	}
+}
+
+void audit_run_selected(void)
+{
+	printf("Running selected tests:\n");
+	for (size_t i = 0; i < audit_chosen_tests_count; i++) {
+		size_t test_n = audit_chosen_tests[i];
+		if (test_n > audit_tests_count) {
+			printf(AUDIT_FAIL_ "Test %lu doesn't exist", i);
+			return;
+		} else {
+			printf(AUDIT_INFO_ "%lu: %s" AUDIT_RESET_ "\n", test_n,
+			       audit_tests[test_n].name);
 		}
+	}
 
-		audit_first_failed_assert = true;
-		setup = test_array[i].setup;
-		teardown = test_array[i].teardown;
+	for (size_t i = 0; i < audit_chosen_tests_count; i++) {
+		audit_run_test(audit_chosen_tests[i]);
+	}
+}
 
-		if (setup) {
-			setup();
-		}
+void audit_run_tests(void)
+{
+	if (audit_chosen_tests_count > 0) {
+		audit_run_selected();
+		return;
+	}
 
-		test_array[i].fn(&audit_tests[i]);
+	printf("Running all tests.\n");
 
-		if (teardown) {
-			teardown();
-		}
+	for (size_t i = 0; i < audit_tests_count; i++) {
+		audit_run_test(i);
 	}
 }
 
@@ -353,7 +362,7 @@ bool audit_save_test(char *test_n)
 		return false;
 	}
 
-	audit_chosen_tests[audit_chosen_tests_count++] = *test;
+	audit_chosen_tests[audit_chosen_tests_count++] = n;
 	return true;
 }
 
@@ -370,7 +379,7 @@ __attribute__((constructor)) static void audit_init(void)
 	audit_tests = malloc(sizeof(audit_v) * AUDIT_INITIAL_N_TESTS);
 	audit_tests_max = AUDIT_INITIAL_N_TESTS;
 
-	audit_chosen_tests = malloc(sizeof(audit_v) * AUDIT_INITIAL_N_TESTS);
+	audit_chosen_tests = malloc(sizeof(size_t) * AUDIT_INITIAL_N_TESTS);
 	audit_chosen_tests_max = AUDIT_INITIAL_N_TESTS;
 
 	audit_messages = malloc(sizeof(char *) * AUDIT_INITIAL_N_MESSAGES);
@@ -399,7 +408,7 @@ int main(int argc, char **argv)
 		};
 	}
 
-	printf(AUDIT_OK_ "AUDIT START" AUDIT_RESET_ "\n");
+	printf(AUDIT_OK_ "AUDIT START" AUDIT_RESET_ "\n\n");
 
 	audit_run_tests();
 	audit_print_results();
