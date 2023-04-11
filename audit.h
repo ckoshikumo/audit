@@ -29,26 +29,7 @@
 #endif // AUDIT_NO_COLORS
 
 // INTERFACE:
-
-#define audit_setup                                                                                \
-	void audit_setup_fn(void);                                                                 \
-	__attribute__((constructor)) static void audit_setup_init(void)                            \
-	{                                                                                          \
-		audit_setup_fn_ptr = audit_setup_fn;                                               \
-	}                                                                                          \
-	void audit_setup_fn(void)
-
-#define audit_teardown                                                                             \
-	void audit_teardown_fn(void);                                                              \
-	__attribute__((constructor)) static void audit_teardown_init(void)                         \
-	{                                                                                          \
-		audit_teardown_fn_ptr = audit_teardown_fn;                                         \
-	}                                                                                          \
-	void audit_teardown_fn(void)
-
-#define audit(str_name__) audit_internal(str_name__, __LINE__, true)
-
-#define audit_direct(str_name__) audit_internal(str_name__, __LINE__, false)
+#define audit(...) audit_def_1(audit_, audit_narg(__VA_ARGS__))(__VA_ARGS__)
 
 #define review(assert__, msg__, ...)                                                               \
 	do {                                                                                       \
@@ -72,6 +53,18 @@
 
 // IMPLEMENTATION:
 
+// Macro trickery to make default arguments work:
+#define audit_narg(...) audit_arg_1(__VA_ARGS__, audit_rseq_n())
+#define audit_arg_1(...) audit_arg_n(__VA_ARGS__)
+#define audit_arg_n(_1, _2, _3, _4, N, ...) N
+#define audit_rseq_n() 4, 3, 2, 1, 0
+#define audit_def_2(_name, _n) _name##_n
+#define audit_def_1(_name, _n) audit_def_2(_name, _n)
+
+#define audit_1(_name) audit_internal(_name, NULL, NULL, __LINE__)
+#define audit_2(_name, _setup) audit_internal(_name, _setup, NULL, __LINE__)
+#define audit_3(_name, _setup, _teardown) audit_internal(_name, _setup, _teardown, __LINE__)
+
 // These are not super relevant; they're just some initial values.
 // Audit will resize the arrays as needed.
 #define AUDIT_INITIAL_N_TESTS 100
@@ -83,31 +76,24 @@
 
 typedef struct audit_v audit_v;
 typedef void (*audit_check_fn)(audit_v *this);
+typedef void (*audit_setup_teardown)(void);
 
 typedef struct audit_v {
 	char *name;
 	int n;
-	bool setup;
 	audit_check_fn fn;
+	audit_setup_teardown setup;
+	audit_setup_teardown teardown;
 } audit_v;
 
-#define audit_internal(str_name__, line__, setup__)                                                \
+#define audit_internal(str_name__, setup__, teardown__, line__)                                    \
 	void AUDIT_CONCAT(audit_test__, line__)(audit_v * this);                                   \
 	__attribute__((constructor)) static void AUDIT_CONCAT(audit_init_, line__)(void)           \
 	{                                                                                          \
-		audit_register_test(str_name__, AUDIT_CONCAT(audit_test__, line__), setup__);      \
-		if (setup__) {                                                                     \
-			audit_needs_setup = true;                                                  \
-		}                                                                                  \
+		audit_register_test(str_name__, AUDIT_CONCAT(audit_test__, line__), setup__,       \
+				    teardown__);                                                   \
 	}                                                                                          \
 	void AUDIT_CONCAT(audit_test__, line__)(audit_v * this)
-
-typedef void (*audit_setup_teardown)(void);
-
-static audit_setup_teardown audit_setup_fn_ptr = NULL;
-static audit_setup_teardown audit_teardown_fn_ptr = NULL;
-
-static bool audit_needs_setup = false;
 
 static audit_v *audit_tests = NULL;
 static size_t audit_tests_count = 0;
@@ -132,12 +118,13 @@ static bool audit_first_failed_assert = true;
 
 static inline void audit_check_test_count(void);
 
-static inline void audit_register_test(char *name, audit_check_fn fn, bool setup)
+static inline void audit_register_test(char *name, audit_check_fn fn, audit_setup_teardown setup,
+				       audit_setup_teardown teardown)
 {
 	static int counter = 0;
 	audit_check_test_count();
 	audit_tests[audit_tests_count++] =
-	    (audit_v){.name = name, .n = counter++, .setup = setup, .fn = fn};
+	    (audit_v){.name = name, .n = counter++, .fn = fn, .setup = setup, .teardown = teardown};
 }
 
 static inline void audit_init_tests_array(void)
@@ -298,31 +285,12 @@ static inline void audit_print_results(void)
 
 static inline void audit_run_tests(void)
 {
-	if (audit_needs_setup && !audit_setup_fn_ptr && !audit_teardown_fn_ptr) {
-		fprintf(stderr, "\n" AUDIT_FAIL_ "ERROR: No setup or teardown functions "
-				"provided." AUDIT_RESET_ "\n\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (audit_needs_setup && !audit_setup_fn_ptr) {
-		fprintf(stderr,
-			"\n" AUDIT_FAIL_ "ERROR: No setup function provided." AUDIT_RESET_ "\n\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (audit_needs_setup && !audit_teardown_fn_ptr) {
-		fprintf(stderr, "\n" AUDIT_FAIL_
-				"ERROR: No teardown function provided." AUDIT_RESET_ "\n\n");
-		exit(EXIT_FAILURE);
-	}
-
-	audit_v *test_array;
-
 	printf("\n");
+	audit_v *test_array;
 
 	if (audit_chosen_tests_count > 0) {
 		test_array = audit_chosen_tests;
-		printf("Reviewing selected:\n");
+		printf("Running selected tests:\n");
 		for (size_t i = 0;; i++) {
 			if (!test_array[i].name) {
 				break;
@@ -332,10 +300,11 @@ static inline void audit_run_tests(void)
 		}
 	} else {
 		test_array = audit_tests;
-		printf("Reviewing all.\n");
+		printf("Running all tests.\n");
 	}
 
-	bool setup;
+	audit_setup_teardown setup;
+	audit_setup_teardown teardown;
 
 	for (size_t i = 0;; i++) {
 		if (!test_array[i].fn) {
@@ -344,12 +313,16 @@ static inline void audit_run_tests(void)
 
 		audit_first_failed_assert = true;
 		setup = test_array[i].setup;
+		teardown = test_array[i].teardown;
+
 		if (setup) {
-			audit_setup_fn_ptr();
+			setup();
 		}
+
 		test_array[i].fn(&audit_tests[i]);
-		if (setup) {
-			audit_teardown_fn_ptr();
+
+		if (teardown) {
+			teardown();
 		}
 	}
 }
