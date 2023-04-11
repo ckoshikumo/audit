@@ -50,7 +50,7 @@
 		}                                                                                  \
 	} while (0)
 
-// IMPLEMENTATION:
+// INTERNALS:
 
 // Macro trickery to make default arguments work:
 #define audit_narg(...) audit_arg_1(__VA_ARGS__, audit_rseq_n())
@@ -94,26 +94,51 @@ typedef struct audit_v {
 	}                                                                                          \
 	void AUDIT_CONCAT(audit_test__, line__)(audit_v * this)
 
-static audit_v *audit_tests = NULL;
-static size_t audit_tests_count = 0;
-static size_t audit_tests_max = 0;
+extern audit_v *audit_tests;
+extern size_t audit_tests_count;
+extern size_t audit_tests_max;
 
-static audit_v *audit_chosen_tests = NULL;
-static size_t audit_chosen_tests_count = 0;
-static size_t audit_chosen_tests_max = 0;
+extern audit_v *audit_chosen_tests;
+extern size_t audit_chosen_tests_count;
+extern size_t audit_chosen_tests_max;
 
-static char **audit_messages = NULL;
-static size_t audit_messages_count = 0;
-static size_t audit_messages_max = 0;
+extern char **audit_messages;
+extern size_t audit_messages_count;
+extern size_t audit_messages_max;
 
-static char *audit_assert_results = NULL;
-static size_t audit_assert_results_count = 0;
-static size_t audit_max_assert_results = 0;
+extern char *audit_assert_results;
+extern size_t audit_assert_results_count;
+extern size_t audit_max_assert_results;
 
-static size_t audit_assert_count = 0;
-static size_t audit_failed_tests_count = 0;
-static size_t audit_failed_asserts_count = 0;
-static bool audit_first_failed_assert = true;
+extern size_t audit_assert_count;
+extern size_t audit_failed_tests_count;
+extern size_t audit_failed_asserts_count;
+extern bool audit_first_failed_assert;
+
+#endif // INCLUDE_AUDIT_H
+
+#ifdef AUDIT_IMPLEMENTATION
+
+audit_v *audit_tests = NULL;
+size_t audit_tests_count = 0;
+size_t audit_tests_max = 0;
+
+audit_v *audit_chosen_tests = NULL;
+size_t audit_chosen_tests_count = 0;
+size_t audit_chosen_tests_max = 0;
+
+char **audit_messages = NULL;
+size_t audit_messages_count = 0;
+size_t audit_messages_max = 0;
+
+char *audit_assert_results = NULL;
+size_t audit_assert_results_count = 0;
+size_t audit_max_assert_results = 0;
+
+size_t audit_assert_count = 0;
+size_t audit_failed_tests_count = 0;
+size_t audit_failed_asserts_count = 0;
+bool audit_first_failed_assert = true;
 
 static inline void audit_check_test_count(void);
 
@@ -403,4 +428,4 @@ int main(int argc, char **argv)
 	return audit_failed_tests_count == 0 ? 0 : -1;
 }
 
-#endif // INCLUDE_AUDIT_H
+#endif // AUDIT_IMPLEMENTATION
