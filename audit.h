@@ -50,9 +50,6 @@
 
 #define audit_direct(str_name__) audit_internal(str_name__, __LINE__, false)
 
-// #define review_eq(a__, b__, msg__, ...)\
-   // review(a__ == b__,)
-
 #define review(assert__, msg__, ...)                                                               \
 	do {                                                                                       \
 		audit_assert_count++;                                                              \
