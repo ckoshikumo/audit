@@ -1,7 +1,6 @@
 #ifndef INCLUDE_AUDIT_H
 #define INCLUDE_AUDIT_H
 
-#include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
