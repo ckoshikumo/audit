@@ -340,14 +340,6 @@ void audit_print_available_tests(void)
 	}
 }
 
-audit_v *audit_get_test_by_index(size_t n)
-{
-	if (n > audit_tests_count) {
-		return NULL;
-	}
-	return &audit_tests[n];
-}
-
 bool audit_save_test(char *test_n)
 {
 	char *end = NULL;
@@ -358,11 +350,7 @@ bool audit_save_test(char *test_n)
 		exit(EXIT_FAILURE);
 	}
 
-	audit_v *test = audit_get_test_by_index(n);
-	if (!test) {
-		return false;
-	}
-
+	audit_ensure_capacity(audit_chosen_tests);
 	audit_chosen_tests[audit_chosen_tests_count++] = n;
 	return true;
 }
