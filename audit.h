@@ -162,7 +162,7 @@ void audit_check_message_count(void)
 	}
 
 	size_t new_max = audit_messages_max * 2;
-	audit_messages = realloc(audit_messages, sizeof(char *) * new_max);
+	audit_messages = realloc(audit_messages, sizeof(*audit_messages) * new_max);
 	if (!audit_messages) {
 		exit(EXIT_FAILURE);
 	}
@@ -176,7 +176,7 @@ void audit_check_test_count(void)
 	}
 
 	size_t new_max = audit_tests_max * 2;
-	audit_tests = realloc(audit_tests, sizeof(audit_v) * new_max);
+	audit_tests = realloc(audit_tests, sizeof(*audit_tests) * new_max);
 	if (!audit_tests) {
 		exit(EXIT_FAILURE);
 	}
@@ -190,7 +190,8 @@ void audit_check_assert_result_count(void)
 	}
 
 	size_t new_max = audit_max_assert_results * 2;
-	audit_assert_results = realloc(audit_assert_results, sizeof(bool) * new_max);
+	audit_assert_results =
+	    realloc(audit_assert_results, sizeof(*audit_assert_results) * new_max);
 	if (!audit_assert_results) {
 		exit(EXIT_FAILURE);
 	}
@@ -376,16 +377,16 @@ void audit_free_resources(void)
 
 __attribute__((constructor)) static void audit_init(void)
 {
-	audit_tests = malloc(sizeof(audit_v) * AUDIT_INITIAL_N_TESTS);
+	audit_tests = malloc(sizeof(*audit_tests) * AUDIT_INITIAL_N_TESTS);
 	audit_tests_max = AUDIT_INITIAL_N_TESTS;
 
-	audit_chosen_tests = malloc(sizeof(size_t) * AUDIT_INITIAL_N_TESTS);
+	audit_chosen_tests = malloc(sizeof(*audit_chosen_tests) * AUDIT_INITIAL_N_TESTS);
 	audit_chosen_tests_max = AUDIT_INITIAL_N_TESTS;
 
-	audit_messages = malloc(sizeof(char *) * AUDIT_INITIAL_N_MESSAGES);
+	audit_messages = malloc(sizeof(*audit_messages) * AUDIT_INITIAL_N_MESSAGES);
 	audit_messages_max = AUDIT_INITIAL_N_MESSAGES;
 
-	audit_assert_results = malloc(sizeof(bool) * AUDIT_INITIAL_N_ASSERTS);
+	audit_assert_results = malloc(sizeof(*audit_assert_results) * AUDIT_INITIAL_N_ASSERTS);
 	audit_max_assert_results = AUDIT_INITIAL_N_ASSERTS;
 
 	if (!audit_tests || !audit_chosen_tests || !audit_messages || !audit_assert_results) {
