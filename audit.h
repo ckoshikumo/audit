@@ -46,7 +46,7 @@
 		audit_store_assert_result(false);                                                  \
 		if (audit_first_failed_assert) {                                                   \
 			audit_first_failed_assert = false;                                         \
-			audit_failed_tests_count++;                                                \
+			audit_failed_count++;                                                \
 			audit_store_message(AUDIT_COLOR_INFO "\n%i: %s" AUDIT_RESET, this->n,      \
 					    this->name);                                           \
 		}                                                                                  \
@@ -103,9 +103,9 @@ extern audit_v *audit_tests;
 extern size_t audit_tests_count;
 extern size_t audit_tests_max;
 
-extern size_t *audit_chosen_tests;
-extern size_t audit_chosen_tests_count;
-extern size_t audit_chosen_tests_max;
+extern size_t *audit_selected;
+extern size_t audit_selected_count;
+extern size_t audit_selected_max;
 
 extern char **audit_messages;
 extern size_t audit_messages_count;
@@ -116,7 +116,7 @@ extern size_t audit_assert_results_count;
 extern size_t audit_assert_results_max;
 
 extern size_t audit_assert_count;
-extern size_t audit_failed_tests_count;
+extern size_t audit_failed_count;
 extern size_t audit_failed_asserts_count;
 extern bool audit_first_failed_assert;
 
@@ -133,9 +133,9 @@ audit_v *audit_tests = NULL;
 size_t audit_tests_count = 0;
 size_t audit_tests_max = 0;
 
-size_t *audit_chosen_tests = NULL;
-size_t audit_chosen_tests_count = 0;
-size_t audit_chosen_tests_max = 0;
+size_t *audit_selected = NULL;
+size_t audit_selected_count = 0;
+size_t audit_selected_max = 0;
 
 char **audit_messages = NULL;
 size_t audit_messages_count = 0;
@@ -146,7 +146,7 @@ size_t audit_assert_results_count = 0;
 size_t audit_assert_results_max = 0;
 
 size_t audit_assert_count = 0;
-size_t audit_failed_tests_count = 0;
+size_t audit_failed_count = 0;
 size_t audit_failed_asserts_count = 0;
 bool audit_first_failed_assert = true;
 
@@ -217,7 +217,7 @@ void audit_print_dots(void)
 
 void audit_print_failures(void)
 {
-	if (audit_failed_tests_count == 0) {
+	if (audit_failed_count == 0) {
 		printf(AUDIT_COLOR_OK "AUDIT OK\n" AUDIT_RESET);
 		return;
 	}
@@ -232,14 +232,14 @@ void audit_print_failures(void)
 
 void audit_print_summary(void)
 {
-	if (audit_failed_tests_count == 0) {
+	if (audit_failed_count == 0) {
 		printf(AUDIT_COLOR_OK);
 	} else {
 		printf(AUDIT_COLOR_FAIL);
 	}
 
 	printf("%zu tests (%zu failed), %zu assertions (%zu failed)" AUDIT_RESET "\n\n",
-	       audit_tests_count, audit_failed_tests_count, audit_assert_count,
+	       audit_tests_count, audit_failed_count, audit_assert_count,
 	       audit_failed_asserts_count);
 }
 
@@ -272,8 +272,8 @@ void audit_run(size_t test_n)
 
 void audit_run_selected(void)
 {
-	for (size_t i = 0; i < audit_chosen_tests_count; i++) {
-		size_t test_n = audit_chosen_tests[i];
+	for (size_t i = 0; i < audit_selected_count; i++) {
+		size_t test_n = audit_selected[i];
 		if (test_n > audit_tests_count) {
 			printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist", i);
 			return;
@@ -283,8 +283,8 @@ void audit_run_selected(void)
 		}
 	}
 
-	for (size_t i = 0; i < audit_chosen_tests_count; i++) {
-		audit_run(audit_chosen_tests[i]);
+	for (size_t i = 0; i < audit_selected_count; i++) {
+		audit_run(audit_selected[i]);
 	}
 }
 
@@ -322,14 +322,14 @@ void audit_choose(char *test_n)
 		return;
 	}
 
-	audit_ensure_capacity(audit_chosen_tests);
-	audit_chosen_tests[audit_chosen_tests_count++] = n;
+	audit_ensure_capacity(audit_selected);
+	audit_selected[audit_selected_count++] = n;
 }
 
 void audit_free_resources(void)
 {
 	free(audit_tests);
-	free(audit_chosen_tests);
+	free(audit_selected);
 	// TODO: Actually free all the string messages:
 	free(audit_messages);
 	free(audit_assert_results);
@@ -340,8 +340,8 @@ __attribute__((constructor)) static void audit_init(void)
 	audit_tests = malloc(sizeof(*audit_tests) * AUDIT_INITIAL_N_TESTS);
 	audit_tests_max = AUDIT_INITIAL_N_TESTS;
 
-	audit_chosen_tests = malloc(sizeof(*audit_chosen_tests) * AUDIT_INITIAL_N_TESTS);
-	audit_chosen_tests_max = AUDIT_INITIAL_N_TESTS;
+	audit_selected = malloc(sizeof(*audit_selected) * AUDIT_INITIAL_N_TESTS);
+	audit_selected_max = AUDIT_INITIAL_N_TESTS;
 
 	audit_messages = malloc(sizeof(*audit_messages) * AUDIT_INITIAL_N_MESSAGES);
 	audit_messages_max = AUDIT_INITIAL_N_MESSAGES;
@@ -349,14 +349,14 @@ __attribute__((constructor)) static void audit_init(void)
 	audit_assert_results = malloc(sizeof(*audit_assert_results) * AUDIT_INITIAL_N_ASSERTS);
 	audit_assert_results_max = AUDIT_INITIAL_N_ASSERTS;
 
-	if (!audit_tests || !audit_chosen_tests || !audit_messages || !audit_assert_results) {
+	if (!audit_tests || !audit_selected || !audit_messages || !audit_assert_results) {
 		exit(EXIT_FAILURE);
 	}
 }
 int main(int argc, char **argv)
 {
 	atexit(audit_free_resources);
-	bool tried_to_choose = false;
+	bool tried_to_select = false;
 
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--list") == 0) {
@@ -364,18 +364,18 @@ int main(int argc, char **argv)
 			return 0;
 		}
 
-		tried_to_choose = true;
+		tried_to_select = true;
 		audit_choose(argv[i]);
 	}
 
-	if (tried_to_choose && audit_chosen_tests_count == 0) {
+	if (tried_to_select && audit_selected_count == 0) {
 		printf(AUDIT_COLOR_FAIL "Couldn't run any tests." AUDIT_RESET "\n");
 		return -1;
 	}
 
 	printf(AUDIT_COLOR_OK "AUDIT START" AUDIT_RESET "\n\n");
 
-	if (audit_chosen_tests_count > 0) {
+	if (audit_selected_count > 0) {
 		printf("Running selected tests:\n\n");
 		audit_run_selected();
 	} else {
@@ -385,7 +385,7 @@ int main(int argc, char **argv)
 
 	audit_print_results();
 
-	return audit_failed_tests_count == 0 ? 0 : -1;
+	return audit_failed_count == 0 ? 0 : -1;
 }
 
 #endif // AUDIT_IMPLEMENTATION
