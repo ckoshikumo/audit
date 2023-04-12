@@ -46,7 +46,7 @@
 		audit_store_assert_result(false);                                                  \
 		if (audit_first_failed_assert) {                                                   \
 			audit_first_failed_assert = false;                                         \
-			audit_failed_count++;                                                \
+			audit_failed_count++;                                                      \
 			audit_store_message(AUDIT_COLOR_INFO "\n%i: %s" AUDIT_RESET, this->n,      \
 					    this->name);                                           \
 		}                                                                                  \
@@ -238,7 +238,7 @@ void audit_print_summary(void)
 		printf(AUDIT_COLOR_FAIL);
 	}
 
-	printf("%zu tests (%zu failed), %zu assertions (%zu failed)" AUDIT_RESET "\n\n",
+	printf("%zu tests (%zu failed), %zu assertions (%zu failed)\n\n" AUDIT_RESET,
 	       audit_tests_count, audit_failed_count, audit_assert_count,
 	       audit_failed_asserts_count);
 }
@@ -278,7 +278,7 @@ void audit_run_selected(void)
 			printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist", i);
 			return;
 		} else {
-			printf(AUDIT_COLOR_INFO "%lu: %s" AUDIT_RESET "\n", test_n,
+			printf(AUDIT_COLOR_INFO "%lu: %s\n" AUDIT_RESET, test_n,
 			       audit_tests[test_n].name);
 		}
 	}
@@ -298,7 +298,7 @@ void audit_run_all(void)
 void audit_print_available(void)
 {
 	for (size_t i = 0; i < audit_tests_count; i++) {
-		printf(AUDIT_COLOR_INFO "%i: %s" AUDIT_RESET "\n", audit_tests[i].n,
+		printf(AUDIT_COLOR_INFO "%i: %s\n" AUDIT_RESET, audit_tests[i].n,
 		       audit_tests[i].name);
 	}
 }
@@ -317,7 +317,7 @@ void audit_choose(char *test_n)
 	}
 
 	if (n >= audit_tests_count) {
-		printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist." AUDIT_RESET "\n", n);
+		printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist.\n" AUDIT_RESET, n);
 		printf("Run audit --list to see available tests.\n");
 		return;
 	}
@@ -369,11 +369,11 @@ int main(int argc, char **argv)
 	}
 
 	if (tried_to_select && audit_selected_count == 0) {
-		printf(AUDIT_COLOR_FAIL "Couldn't run any tests." AUDIT_RESET "\n");
+		printf(AUDIT_COLOR_FAIL "Couldn't run any tests.\n" AUDIT_RESET);
 		return -1;
 	}
 
-	printf(AUDIT_COLOR_OK "AUDIT START" AUDIT_RESET "\n\n");
+	printf(AUDIT_COLOR_OK "AUDIT START\n\n" AUDIT_RESET);
 
 	if (audit_selected_count > 0) {
 		printf("Running selected tests:\n\n");
