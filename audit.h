@@ -303,20 +303,27 @@ void audit_print_available(void)
 	}
 }
 
-bool audit_choose(char *test_n)
+void audit_choose(char *test_n)
 {
 	char *end = NULL;
 	size_t n = (size_t)strtol(test_n, &end, 10);
 
-	// TODO: Deal better with errors.
 	if (*end) {
-		fprintf(stderr, "Couldn't load argument as test number: %s\n", test_n);
-		return false;
+		printf(AUDIT_COLOR_FAIL "\nERROR: " AUDIT_RESET
+					"Couldn't load argument as test number: %s"
+					"\n\n",
+		       test_n);
+		return;
+	}
+
+	if (n >= audit_tests_count) {
+		printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist." AUDIT_RESET "\n", n);
+		printf("Run audit --list to see available tests.\n");
+		return;
 	}
 
 	audit_ensure_capacity(audit_chosen_tests);
 	audit_chosen_tests[audit_chosen_tests_count++] = n;
-	return true;
 }
 
 void audit_free_resources(void)
@@ -349,6 +356,7 @@ __attribute__((constructor)) static void audit_init(void)
 int main(int argc, char **argv)
 {
 	atexit(audit_free_resources);
+	bool tried_to_choose = false;
 
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--list") == 0) {
@@ -356,11 +364,13 @@ int main(int argc, char **argv)
 			return 0;
 		}
 
-		// TODO: Deal better with non-existent tests.
-		if (!audit_choose(argv[i])) {
-			fprintf(stderr, "Test %s not found.\n", argv[i]);
-			exit(EXIT_FAILURE);
-		};
+		tried_to_choose = true;
+		audit_choose(argv[i]);
+	}
+
+	if (tried_to_choose && audit_chosen_tests_count == 0) {
+		printf(AUDIT_COLOR_FAIL "Couldn't run any tests." AUDIT_RESET "\n");
+		return -1;
 	}
 
 	printf(AUDIT_COLOR_OK "AUDIT START" AUDIT_RESET "\n\n");
