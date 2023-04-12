@@ -38,19 +38,19 @@
 
 #define review(_assert, _msg, ...)                                                                 \
 	do {                                                                                       \
-		audit_assert_count++;                                                              \
+		audit_state.assert_count++;                                                        \
 		if (_assert) {                                                                     \
-			audit_store_assert_result(true);                                           \
+			audit_store_result(true);                                                  \
 			break;                                                                     \
 		}                                                                                  \
-		audit_store_assert_result(false);                                                  \
-		if (audit_first_failed_assert) {                                                   \
-			audit_first_failed_assert = false;                                         \
-			audit_failed_count++;                                                      \
+		audit_store_result(false);                                                         \
+		if (audit_state.first_failed_assert) {                                             \
+			audit_state.first_failed_assert = false;                                   \
+			audit_state.failed_tests++;                                                \
 			audit_store_message(AUDIT_COLOR_INFO "\n%i: %s" AUDIT_RESET, this->n,      \
 					    this->name);                                           \
 		}                                                                                  \
-		audit_failed_asserts_count++;                                                      \
+		audit_state.failed_asserts++;                                                      \
 		audit_store_message("\tline %i: " _msg, __LINE__, ##__VA_ARGS__);                  \
 	} while (0)
 
@@ -79,97 +79,88 @@
 #define _audit_concat_1(v1, v2) v1##v2
 #define _audit_concat(v1, v2) _audit_concat_1(v1, v2)
 
-typedef struct audit_v audit_v;
-typedef void (*audit_check_fn)(audit_v *this);
-typedef void (*audit_setup_teardown)(void);
+typedef struct audit_test_s audit_test_s;
 
-typedef struct audit_v {
+typedef void (*audit_test_fn)(audit_test_s *this);
+typedef void (*audit_setup_fn)(void);
+typedef audit_setup_fn audit_teardown_fn;
+
+typedef struct audit_test_s {
 	char *name;
 	int n;
-	audit_check_fn fn;
-	audit_setup_teardown setup;
-	audit_setup_teardown teardown;
-} audit_v;
+	audit_test_fn fn;
+	audit_setup_fn setup;
+	audit_teardown_fn teardown;
+} audit_test_s;
+
+typedef struct audit_state_s {
+	size_t assert_count;
+	size_t failed_tests;
+	size_t failed_asserts;
+	bool first_failed_assert;
+} audit_state_s;
+
+extern struct audit_state_s audit_state;
 
 #define _audit_internal(_name, _setup, _teardown, _line)                                           \
-	void _audit_concat(audit_test__, _line)(audit_v * this);                                   \
+	void _audit_concat(audit_test__, _line)(audit_test_s * this);                              \
 	__attribute__((constructor)) static void _audit_concat(audit_init_, _line)(void)           \
 	{                                                                                          \
-		audit_register_test(_name, _audit_concat(audit_test__, _line), _setup, _teardown); \
+		audit_register(_name, _audit_concat(audit_test__, _line), _setup, _teardown);      \
 	}                                                                                          \
-	void _audit_concat(audit_test__, _line)(audit_v * this)
+	void _audit_concat(audit_test__, _line)(audit_test_s * this)
 
-extern audit_v *audit_tests;
-extern size_t audit_tests_count;
-extern size_t audit_tests_max;
-
-extern size_t *audit_selected;
-extern size_t audit_selected_count;
-extern size_t audit_selected_max;
-
-extern char **audit_messages;
-extern size_t audit_messages_count;
-extern size_t audit_messages_max;
-
-extern char *audit_assert_results;
-extern size_t audit_assert_results_count;
-extern size_t audit_assert_results_max;
-
-extern size_t audit_assert_count;
-extern size_t audit_failed_count;
-extern size_t audit_failed_asserts_count;
-extern bool audit_first_failed_assert;
-
-void audit_register_test(char *name, audit_check_fn fn, audit_setup_teardown setup,
-			 audit_setup_teardown teardown);
+void audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_teardown_fn td);
 void audit_store_message(const char *fmt, ...);
-void audit_store_assert_result(bool res);
+void audit_store_result(bool res);
 
-#endif // INCLUDE_AUDIT_H
+/* #endif // INCLUDE_AUDIT_H */
 
-#ifdef AUDIT_IMPLEMENTATION
+/* #ifdef AUDIT_IMPLEMENTATION */
 
-audit_v *audit_tests = NULL;
-size_t audit_tests_count = 0;
-size_t audit_tests_max = 0;
+audit_state_s audit_state = {.first_failed_assert = true};
 
-size_t *audit_selected = NULL;
-size_t audit_selected_count = 0;
-size_t audit_selected_max = 0;
+typedef struct audit_metadata_s {
+	size_t count;
+	size_t max;
+} audit_metadata_s;
 
-char **audit_messages = NULL;
-size_t audit_messages_count = 0;
-size_t audit_messages_max = 0;
+struct audit_tests_s {
+	audit_metadata_s;
+	audit_test_s *data;
+} audit_tests = {.max = AUDIT_INITIAL_N_TESTS};
 
-char *audit_assert_results = NULL;
-size_t audit_assert_results_count = 0;
-size_t audit_assert_results_max = 0;
+struct audit_selected_s {
+	audit_metadata_s;
+	size_t *data;
+} audit_selected = {.max = AUDIT_INITIAL_N_TESTS};
 
-size_t audit_assert_count = 0;
-size_t audit_failed_count = 0;
-size_t audit_failed_asserts_count = 0;
-bool audit_first_failed_assert = true;
+struct audit_results_s {
+	audit_metadata_s;
+	size_t *data;
+} audit_results = {.max = AUDIT_INITIAL_N_ASSERTS};
+
+struct audit_messages_s {
+	audit_metadata_s;
+	char **data;
+} audit_messages = {.max = AUDIT_INITIAL_N_MESSAGES};
 
 #define audit_ensure_capacity(_name)                                                               \
 	do {                                                                                       \
-		if (_audit_concat(_name, _count) == _audit_concat(_name, _max)) {                  \
-			size_t new_max = _audit_concat(_name, _max) * 2;                           \
-			_name = realloc(_name, sizeof(*_name) * new_max);                          \
-			if (!_name) {                                                              \
+		if (_name.count == _name.max) {                                                    \
+			_name.max *= 2;                                                            \
+			_name.data = realloc(_name.data, sizeof(*_name.data) * _name.max);         \
+			if (!_name.data) {                                                         \
 				exit(EXIT_FAILURE);                                                \
 			}                                                                          \
-			_audit_concat(_name, _max) = new_max;                                      \
 		}                                                                                  \
 	} while (0)
 
-void audit_register_test(char *name, audit_check_fn fn, audit_setup_teardown setup,
-			 audit_setup_teardown teardown)
+void audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_setup_fn td)
 {
-	static int counter = 0;
-
 	audit_ensure_capacity(audit_tests);
-	audit_tests[audit_tests_count++] =
-	    (audit_v){.name = name, .n = counter++, .fn = fn, .setup = setup, .teardown = teardown};
+	audit_tests.data[audit_tests.count++] = (audit_test_s){
+	    .name = name, .n = audit_tests.count, .fn = fn, .setup = st, .teardown = td};
 }
 
 void audit_store_message(const char *fmt, ...)
@@ -190,23 +181,23 @@ void audit_store_message(const char *fmt, ...)
 	va_end(args);
 
 	audit_ensure_capacity(audit_messages);
-	audit_messages[audit_messages_count++] = str;
+	audit_messages.data[audit_messages.count++] = str;
 }
 
-void audit_store_assert_result(bool res)
+void audit_store_result(bool res)
 {
-	audit_ensure_capacity(audit_assert_results);
-	audit_assert_results[audit_assert_results_count++] = res;
+	audit_ensure_capacity(audit_results);
+	audit_results.data[audit_results.count++] = res;
 }
 
 void audit_print_dots(void)
 {
-	for (size_t i = 0; i < audit_assert_results_count; i++) {
+	for (size_t i = 0; i < audit_results.count; i++) {
 		if (i % 80 == 0) {
 			printf("\n");
 		}
 
-		if (audit_assert_results[i]) {
+		if (audit_results.data[i]) {
 			printf(AUDIT_COLOR_OK AUDIT_PASS_ASSERT_STR AUDIT_RESET);
 		} else {
 			printf(AUDIT_COLOR_FAIL AUDIT_FAIL_ASSERT_STR AUDIT_RESET);
@@ -217,30 +208,30 @@ void audit_print_dots(void)
 
 void audit_print_failures(void)
 {
-	if (audit_failed_count == 0) {
+	if (audit_state.failed_asserts == 0) {
 		printf(AUDIT_COLOR_OK "AUDIT OK\n" AUDIT_RESET);
 		return;
 	}
 
 	printf(AUDIT_COLOR_FAIL "AUDIT FAILED\n" AUDIT_RESET);
 
-	for (size_t i = 0; i < audit_messages_count; i++) {
-		printf("%s\n", audit_messages[i]);
+	for (size_t i = 0; i < audit_messages.count; i++) {
+		printf("%s\n", audit_messages.data[i]);
 	}
 	printf("\n");
 }
 
 void audit_print_summary(void)
 {
-	if (audit_failed_count == 0) {
+	if (audit_state.failed_asserts == 0) {
 		printf(AUDIT_COLOR_OK);
 	} else {
 		printf(AUDIT_COLOR_FAIL);
 	}
 
 	printf("%zu tests (%zu failed), %zu assertions (%zu failed)\n\n" AUDIT_RESET,
-	       audit_tests_count, audit_failed_count, audit_assert_count,
-	       audit_failed_asserts_count);
+	       audit_tests.count, audit_state.failed_tests, audit_state.assert_count,
+	       audit_state.failed_asserts);
 }
 
 void audit_print_results(void)
@@ -252,18 +243,18 @@ void audit_print_results(void)
 
 void audit_run(size_t test_n)
 {
-	audit_setup_teardown setup;
-	audit_setup_teardown teardown;
+	audit_setup_fn setup;
+	audit_setup_fn teardown;
 
-	audit_first_failed_assert = true;
-	setup = audit_tests[test_n].setup;
-	teardown = audit_tests[test_n].teardown;
+	audit_state.first_failed_assert = true;
+	setup = audit_tests.data[test_n].setup;
+	teardown = audit_tests.data[test_n].teardown;
 
 	if (setup) {
 		setup();
 	}
 
-	audit_tests[test_n].fn(&audit_tests[test_n]);
+	audit_tests.data[test_n].fn(&audit_tests.data[test_n]);
 
 	if (teardown) {
 		teardown();
@@ -272,34 +263,34 @@ void audit_run(size_t test_n)
 
 void audit_run_selected(void)
 {
-	for (size_t i = 0; i < audit_selected_count; i++) {
-		size_t test_n = audit_selected[i];
-		if (test_n > audit_tests_count) {
+	for (size_t i = 0; i < audit_selected.count; i++) {
+		size_t test_n = audit_selected.data[i];
+		if (test_n > audit_tests.count) {
 			printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist", i);
 			return;
 		} else {
 			printf(AUDIT_COLOR_INFO "%lu: %s\n" AUDIT_RESET, test_n,
-			       audit_tests[test_n].name);
+			       audit_tests.data[test_n].name);
 		}
 	}
 
-	for (size_t i = 0; i < audit_selected_count; i++) {
-		audit_run(audit_selected[i]);
+	for (size_t i = 0; i < audit_selected.count; i++) {
+		audit_run(audit_selected.data[i]);
 	}
 }
 
 void audit_run_all(void)
 {
-	for (size_t i = 0; i < audit_tests_count; i++) {
+	for (size_t i = 0; i < audit_tests.count; i++) {
 		audit_run(i);
 	}
 }
 
 void audit_print_available(void)
 {
-	for (size_t i = 0; i < audit_tests_count; i++) {
-		printf(AUDIT_COLOR_INFO "%i: %s\n" AUDIT_RESET, audit_tests[i].n,
-		       audit_tests[i].name);
+	for (size_t i = 0; i < audit_tests.count; i++) {
+		printf(AUDIT_COLOR_INFO "%i: %s\n" AUDIT_RESET, audit_tests.data[i].n,
+		       audit_tests.data[i].name);
 	}
 }
 
@@ -316,40 +307,34 @@ void audit_choose(char *test_n)
 		return;
 	}
 
-	if (n >= audit_tests_count) {
+	if (n >= audit_tests.count) {
 		printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist.\n" AUDIT_RESET, n);
 		printf("Run audit --list to see available tests.\n");
 		return;
 	}
 
 	audit_ensure_capacity(audit_selected);
-	audit_selected[audit_selected_count++] = n;
+	audit_selected.data[audit_selected.count++] = n;
 }
 
 void audit_free_resources(void)
 {
-	free(audit_tests);
-	free(audit_selected);
+	free(audit_tests.data);
+	free(audit_selected.data);
 	// TODO: Actually free all the string messages:
-	free(audit_messages);
-	free(audit_assert_results);
+	free(audit_messages.data);
+	free(audit_results.data);
 }
 
 __attribute__((constructor)) static void audit_init(void)
 {
-	audit_tests = malloc(sizeof(*audit_tests) * AUDIT_INITIAL_N_TESTS);
-	audit_tests_max = AUDIT_INITIAL_N_TESTS;
+	audit_tests.data = malloc(sizeof(*audit_tests.data) * audit_tests.max);
+	audit_selected.data = malloc(sizeof(*audit_selected.data) * audit_selected.max);
+	audit_messages.data = malloc(sizeof(*audit_messages.data) * audit_messages.max);
+	audit_results.data = malloc(sizeof(*audit_results.data) * audit_results.max);
 
-	audit_selected = malloc(sizeof(*audit_selected) * AUDIT_INITIAL_N_TESTS);
-	audit_selected_max = AUDIT_INITIAL_N_TESTS;
-
-	audit_messages = malloc(sizeof(*audit_messages) * AUDIT_INITIAL_N_MESSAGES);
-	audit_messages_max = AUDIT_INITIAL_N_MESSAGES;
-
-	audit_assert_results = malloc(sizeof(*audit_assert_results) * AUDIT_INITIAL_N_ASSERTS);
-	audit_assert_results_max = AUDIT_INITIAL_N_ASSERTS;
-
-	if (!audit_tests || !audit_selected || !audit_messages || !audit_assert_results) {
+	if (!audit_tests.data || !audit_selected.data || !audit_messages.data ||
+	    !audit_results.data) {
 		exit(EXIT_FAILURE);
 	}
 }
@@ -368,14 +353,14 @@ int main(int argc, char **argv)
 		audit_choose(argv[i]);
 	}
 
-	if (tried_to_select && audit_selected_count == 0) {
+	if (tried_to_select && audit_selected.count == 0) {
 		printf(AUDIT_COLOR_FAIL "Couldn't run any tests.\n" AUDIT_RESET);
 		return -1;
 	}
 
 	printf(AUDIT_COLOR_OK "AUDIT START\n\n" AUDIT_RESET);
 
-	if (audit_selected_count > 0) {
+	if (audit_selected.count > 0) {
 		printf("Running selected tests:\n\n");
 		audit_run_selected();
 	} else {
@@ -385,7 +370,7 @@ int main(int argc, char **argv)
 
 	audit_print_results();
 
-	return audit_failed_count == 0 ? 0 : -1;
+	return audit_state.failed_asserts == 0 ? 0 : -1;
 }
 
 #endif // AUDIT_IMPLEMENTATION
