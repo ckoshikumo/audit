@@ -19,7 +19,7 @@
 #define AUDIT_COLOR_FAIL
 #define AUDIT_COLOR_OK
 #define AUDIT_COLOR_INFO
-#define AUDIT_RESET
+#define AUDIT_COLOR_RESET
 #else // AUDIT_NO_COLORS
 #ifndef AUDIT_COLOR_FAIL
 #define AUDIT_COLOR_FAIL "\x1b[31m"
@@ -30,7 +30,7 @@
 #ifndef AUDIT_COLOR_INFO
 #define AUDIT_COLOR_INFO "\x1b[33m"
 #endif
-#define AUDIT_RESET "\x1b[0m"
+#define AUDIT_COLOR_RESET "\x1b[0m"
 #endif // AUDIT_NO_COLORS
 
 // INTERFACE:
@@ -47,8 +47,8 @@
 		if (audit_state.first_failed_assert) {                                             \
 			audit_state.first_failed_assert = false;                                   \
 			audit_state.failed_tests++;                                                \
-			audit_store_message(AUDIT_COLOR_INFO "\n%i: %s" AUDIT_RESET, this->n,      \
-					    this->name);                                           \
+			audit_store_message(AUDIT_COLOR_INFO "\n%i: %s" AUDIT_COLOR_RESET,         \
+					    this->n, this->name);                                  \
 		}                                                                                  \
 		audit_state.failed_asserts++;                                                      \
 		audit_store_message("\tline %i: " _msg, __LINE__, ##__VA_ARGS__);                  \
@@ -198,9 +198,9 @@ void audit_print_dots(void)
 		}
 
 		if (audit_results.data[i]) {
-			printf(AUDIT_COLOR_OK AUDIT_PASS_ASSERT_STR AUDIT_RESET);
+			printf(AUDIT_COLOR_OK AUDIT_PASS_ASSERT_STR AUDIT_COLOR_RESET);
 		} else {
-			printf(AUDIT_COLOR_FAIL AUDIT_FAIL_ASSERT_STR AUDIT_RESET);
+			printf(AUDIT_COLOR_FAIL AUDIT_FAIL_ASSERT_STR AUDIT_COLOR_RESET);
 		}
 	}
 	printf("\n\n");
@@ -209,11 +209,11 @@ void audit_print_dots(void)
 void audit_print_failures(void)
 {
 	if (audit_state.failed_asserts == 0) {
-		printf(AUDIT_COLOR_OK "AUDIT OK\n" AUDIT_RESET);
+		printf(AUDIT_COLOR_OK "AUDIT OK\n" AUDIT_COLOR_RESET);
 		return;
 	}
 
-	printf(AUDIT_COLOR_FAIL "AUDIT FAILED\n" AUDIT_RESET);
+	printf(AUDIT_COLOR_FAIL "AUDIT FAILED\n" AUDIT_COLOR_RESET);
 
 	for (size_t i = 0; i < audit_messages.count; i++) {
 		printf("%s\n", audit_messages.data[i]);
@@ -229,7 +229,7 @@ void audit_print_summary(void)
 		printf(AUDIT_COLOR_FAIL);
 	}
 
-	printf("%zu tests (%zu failed), %zu assertions (%zu failed)\n\n" AUDIT_RESET,
+	printf("%zu tests (%zu failed), %zu assertions (%zu failed)\n\n" AUDIT_COLOR_RESET,
 	       audit_tests.count, audit_state.failed_tests, audit_state.assert_count,
 	       audit_state.failed_asserts);
 }
@@ -269,7 +269,7 @@ void audit_run_selected(void)
 			printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist", i);
 			return;
 		} else {
-			printf(AUDIT_COLOR_INFO "%lu: %s\n" AUDIT_RESET, test_n,
+			printf(AUDIT_COLOR_INFO "%lu: %s\n" AUDIT_COLOR_RESET, test_n,
 			       audit_tests.data[test_n].name);
 		}
 	}
@@ -289,7 +289,7 @@ void audit_run_all(void)
 void audit_print_available(void)
 {
 	for (size_t i = 0; i < audit_tests.count; i++) {
-		printf(AUDIT_COLOR_INFO "%i: %s\n" AUDIT_RESET, audit_tests.data[i].n,
+		printf(AUDIT_COLOR_INFO "%i: %s\n" AUDIT_COLOR_RESET, audit_tests.data[i].n,
 		       audit_tests.data[i].name);
 	}
 }
@@ -300,7 +300,7 @@ void audit_choose(char *test_n)
 	size_t n = (size_t)strtol(test_n, &end, 10);
 
 	if (*end) {
-		printf(AUDIT_COLOR_FAIL "\nERROR: " AUDIT_RESET
+		printf(AUDIT_COLOR_FAIL "\nERROR: " AUDIT_COLOR_RESET
 					"Couldn't load argument as test number: %s"
 					"\n\n",
 		       test_n);
@@ -308,7 +308,7 @@ void audit_choose(char *test_n)
 	}
 
 	if (n >= audit_tests.count) {
-		printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist.\n" AUDIT_RESET, n);
+		printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist.\n" AUDIT_COLOR_RESET, n);
 		printf("Run audit --list to see available tests.\n");
 		return;
 	}
@@ -354,11 +354,11 @@ int main(int argc, char **argv)
 	}
 
 	if (tried_to_select && audit_selected.count == 0) {
-		printf(AUDIT_COLOR_FAIL "Couldn't run any tests.\n" AUDIT_RESET);
+		printf(AUDIT_COLOR_FAIL "Couldn't run any tests.\n" AUDIT_COLOR_RESET);
 		return -1;
 	}
 
-	printf(AUDIT_COLOR_OK "AUDIT START\n\n" AUDIT_RESET);
+	printf(AUDIT_COLOR_OK "AUDIT START\n\n" AUDIT_COLOR_RESET);
 
 	if (audit_selected.count > 0) {
 		printf("Running selected tests:\n\n");
