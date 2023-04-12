@@ -85,20 +85,20 @@ typedef void (*audit_test_fn)(audit_test_s *this);
 typedef void (*audit_setup_fn)(void);
 typedef audit_setup_fn audit_teardown_fn;
 
-typedef struct audit_test_s {
+struct audit_test_s {
 	char *name;
 	int n;
 	audit_test_fn fn;
 	audit_setup_fn setup;
 	audit_teardown_fn teardown;
-} audit_test_s;
+};
 
-typedef struct audit_state_s {
+struct audit_state_s {
 	size_t assert_count;
 	size_t failed_tests;
 	size_t failed_asserts;
 	bool first_failed_assert;
-} audit_state_s;
+};
 
 extern struct audit_state_s audit_state;
 
@@ -118,7 +118,7 @@ void audit_store_result(bool res);
 
 #ifdef AUDIT_IMPLEMENTATION
 
-audit_state_s audit_state = {.first_failed_assert = true};
+struct audit_state_s audit_state = {.first_failed_assert = true};
 
 typedef struct audit_metadata_s {
 	size_t count;
