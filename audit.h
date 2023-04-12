@@ -156,6 +156,10 @@ struct audit_messages_s {
 		}                                                                                  \
 	} while (0)
 
+#define AUDIT_PRINT_OK(_str) AUDIT_COLOR_OK _str AUDIT_COLOR_RESET
+#define AUDIT_PRINT_FAIL(_str) AUDIT_COLOR_FAIL _str AUDIT_COLOR_RESET
+#define AUDIT_PRINT_INFO(_str) AUDIT_COLOR_INFO _str AUDIT_COLOR_RESET
+
 void audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_setup_fn td)
 {
 	audit_ensure_capacity(audit_tests);
@@ -198,9 +202,9 @@ void audit_print_dots(void)
 		}
 
 		if (audit_results.data[i]) {
-			printf(AUDIT_COLOR_OK AUDIT_PASS_ASSERT_STR AUDIT_COLOR_RESET);
+			printf(AUDIT_PRINT_OK(AUDIT_PASS_ASSERT_STR));
 		} else {
-			printf(AUDIT_COLOR_FAIL AUDIT_FAIL_ASSERT_STR AUDIT_COLOR_RESET);
+			printf(AUDIT_PRINT_FAIL(AUDIT_FAIL_ASSERT_STR));
 		}
 	}
 	printf("\n\n");
@@ -209,11 +213,11 @@ void audit_print_dots(void)
 void audit_print_failures(void)
 {
 	if (audit_state.failed_asserts == 0) {
-		printf(AUDIT_COLOR_OK "AUDIT OK\n" AUDIT_COLOR_RESET);
+		printf(AUDIT_PRINT_OK("AUDIT OK\n"));
 		return;
 	}
 
-	printf(AUDIT_COLOR_FAIL "AUDIT FAILED\n" AUDIT_COLOR_RESET);
+	printf(AUDIT_PRINT_FAIL("AUDIT FAILED\n"));
 
 	for (size_t i = 0; i < audit_messages.count; i++) {
 		printf("%s\n", audit_messages.data[i]);
@@ -262,10 +266,10 @@ void audit_run_selected(void)
 	for (size_t i = 0; i < audit_selected.count; i++) {
 		size_t test_n = audit_selected.data[i];
 		if (test_n > audit_tests.count) {
-			printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist", i);
+			printf(AUDIT_PRINT_FAIL("ERROR: Test %lu doesn't exist"), i);
 			return;
 		} else {
-			printf(AUDIT_COLOR_INFO "%lu: %s\n" AUDIT_COLOR_RESET, test_n,
+			printf(AUDIT_PRINT_INFO("%lu: %s\n"), test_n,
 			       audit_tests.data[test_n].name);
 		}
 	}
@@ -285,7 +289,7 @@ void audit_run_all(void)
 void audit_print_available(void)
 {
 	for (size_t i = 0; i < audit_tests.count; i++) {
-		printf(AUDIT_COLOR_INFO "%i: %s\n" AUDIT_COLOR_RESET, audit_tests.data[i].n,
+		printf(AUDIT_PRINT_INFO("%i: %s\n"), audit_tests.data[i].n,
 		       audit_tests.data[i].name);
 	}
 }
@@ -296,16 +300,15 @@ void audit_select(char *input)
 	size_t test_n = (size_t)strtol(input, &end, 10);
 
 	if (*end) {
-		printf(AUDIT_COLOR_FAIL "\nERROR: " AUDIT_COLOR_RESET
-					"Couldn't load argument as test number: %s"
-					"\n\n",
-		       input);
+		printf(
+		    AUDIT_PRINT_FAIL("\nERROR: ") "Couldn't load argument as test number: %s\n\n",
+		    input);
 		return;
 	}
 
 	if (test_n >= audit_tests.count) {
-		printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist.\n" AUDIT_COLOR_RESET, test_n);
-		printf("Run audit --list to see available tests.\n");
+		printf(AUDIT_PRINT_FAIL("Test %lu doesn't exist.\n"), test_n);
+		printf("\tRun audit --list to see available tests.\n");
 		return;
 	}
 
@@ -350,11 +353,11 @@ int main(int argc, char **argv)
 	}
 
 	if (tried_to_select && audit_selected.count == 0) {
-		printf(AUDIT_COLOR_FAIL "Couldn't run any tests.\n" AUDIT_COLOR_RESET);
+		printf(AUDIT_PRINT_FAIL("Couldn't run any tests.\n"));
 		return -1;
 	}
 
-	printf(AUDIT_COLOR_OK "AUDIT START\n\n" AUDIT_COLOR_RESET);
+	printf(AUDIT_PRINT_OK("AUDIT START\n\n"));
 
 	if (audit_selected.count > 0) {
 		printf("Running selected tests:\n\n");
