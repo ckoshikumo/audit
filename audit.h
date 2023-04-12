@@ -44,10 +44,8 @@
 			audit_store_message(AUDIT_INFO_ "\n%i: %s" AUDIT_RESET_, this->n,          \
 					    this->name);                                           \
 		}                                                                                  \
-		{                                                                                  \
-			audit_store_message("\tline %i: " msg__, __LINE__, ##__VA_ARGS__);         \
-			audit_failed_asserts_count++;                                              \
-		}                                                                                  \
+		audit_failed_asserts_count++;                                                      \
+		audit_store_message("\tline %i: " msg__, __LINE__, ##__VA_ARGS__);                 \
 	} while (0)
 
 // INTERNALS:
