@@ -223,11 +223,7 @@ void audit_print_failures(void)
 
 void audit_print_summary(void)
 {
-	if (audit_state.failed_asserts == 0) {
-		printf(AUDIT_COLOR_OK);
-	} else {
-		printf(AUDIT_COLOR_FAIL);
-	}
+	audit_state.failed_asserts == 0 ? printf(AUDIT_COLOR_OK) : printf(AUDIT_COLOR_FAIL);
 
 	printf("%zu tests (%zu failed), %zu assertions (%zu failed)\n\n" AUDIT_COLOR_RESET,
 	       audit_tests.count, audit_state.failed_tests, audit_state.assert_count,
