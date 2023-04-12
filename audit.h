@@ -114,9 +114,9 @@ void audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_teard
 void audit_store_message(const char *fmt, ...);
 void audit_store_result(bool res);
 
-/* #endif // INCLUDE_AUDIT_H */
+#endif // INCLUDE_AUDIT_H
 
-/* #ifdef AUDIT_IMPLEMENTATION */
+#ifdef AUDIT_IMPLEMENTATION
 
 audit_state_s audit_state = {.first_failed_assert = true};
 
