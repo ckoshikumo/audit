@@ -294,7 +294,7 @@ void audit_print_available(void)
 	}
 }
 
-void audit_choose(char *test_n)
+void audit_select(char *test_n)
 {
 	char *end = NULL;
 	size_t n = (size_t)strtol(test_n, &end, 10);
@@ -350,7 +350,7 @@ int main(int argc, char **argv)
 		}
 
 		tried_to_select = true;
-		audit_choose(argv[i]);
+		audit_select(argv[i]);
 	}
 
 	if (tried_to_select && audit_selected.count == 0) {
