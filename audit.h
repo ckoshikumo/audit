@@ -7,33 +7,39 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef AUDIT_PASS_ASSERT_STR_
-#define AUDIT_PASS_ASSERT_STR_ "."
-#endif // AUDIT_PASS_ASSERT_STR_
+#ifndef AUDIT_PASS_ASSERT_STR
+#define AUDIT_PASS_ASSERT_STR "."
+#endif // AUDIT_PASS_ASSERT_STR
 
-#ifndef AUDIT_FAIL_ASSERT_STR_
-#define AUDIT_FAIL_ASSERT_STR_ "X"
-#endif // AUDIT_FAIL_ASSERT_STR_
+#ifndef AUDIT_FAIL_ASSERT_STR
+#define AUDIT_FAIL_ASSERT_STR "X"
+#endif // AUDIT_FAIL_ASSERT_STR
 
 #ifdef AUDIT_NO_COLORS
-#define AUDIT_FAIL_
-#define AUDIT_OK_
-#define AUDIT_INFO_
-#define AUDIT_RESET_
+#define AUDIT_COLOR_FAIL
+#define AUDIT_COLOR_OK
+#define AUDIT_COLOR_INFO
+#define AUDIT_RESET
 #else // AUDIT_NO_COLORS
-#define AUDIT_FAIL_ "\x1b[31m"
-#define AUDIT_OK_ "\x1b[32m"
-#define AUDIT_INFO_ "\x1b[33m"
-#define AUDIT_RESET_ "\x1b[0m"
+#ifndef AUDIT_COLOR_FAIL
+#define AUDIT_COLOR_FAIL "\x1b[31m"
+#endif
+#ifndef AUDIT_COLOR_OK
+#define AUDIT_COLOR_OK "\x1b[32m"
+#endif
+#ifndef AUDIT_COLOR_INFO
+#define AUDIT_COLOR_INFO "\x1b[33m"
+#endif
+#define AUDIT_RESET "\x1b[0m"
 #endif // AUDIT_NO_COLORS
 
 // INTERFACE:
-#define audit(...) audit_def_1(audit_, audit_narg(__VA_ARGS__))(__VA_ARGS__)
+#define audit(...) _audit_def(audit_, _audit_narg(__VA_ARGS__))(__VA_ARGS__)
 
-#define review(assert__, msg__, ...)                                                               \
+#define review(_assert, _msg, ...)                                                                 \
 	do {                                                                                       \
 		audit_assert_count++;                                                              \
-		if (assert__) {                                                                    \
+		if (_assert) {                                                                     \
 			audit_store_assert_result(true);                                           \
 			break;                                                                     \
 		}                                                                                  \
@@ -41,35 +47,37 @@
 		if (audit_first_failed_assert) {                                                   \
 			audit_first_failed_assert = false;                                         \
 			audit_failed_tests_count++;                                                \
-			audit_store_message(AUDIT_INFO_ "\n%i: %s" AUDIT_RESET_, this->n,          \
+			audit_store_message(AUDIT_COLOR_INFO "\n%i: %s" AUDIT_RESET, this->n,      \
 					    this->name);                                           \
 		}                                                                                  \
 		audit_failed_asserts_count++;                                                      \
-		audit_store_message("\tline %i: " msg__, __LINE__, ##__VA_ARGS__);                 \
+		audit_store_message("\tline %i: " _msg, __LINE__, ##__VA_ARGS__);                  \
 	} while (0)
 
 // INTERNALS:
 
-// Macro trickery to make default arguments work:
-#define audit_narg(...) audit_arg_1(__VA_ARGS__, audit_rseq_n())
-#define audit_arg_1(...) audit_arg_n(__VA_ARGS__)
-#define audit_arg_n(_1, _2, _3, _4, N, ...) N
-#define audit_rseq_n() 4, 3, 2, 1, 0
-#define audit_def_2(_name, _n) _name##_n
-#define audit_def_1(_name, _n) audit_def_2(_name, _n)
-
-#define audit_1(_name) audit_internal(_name, NULL, NULL, __LINE__)
-#define audit_2(_name, _setup) audit_internal(_name, _setup, NULL, __LINE__)
-#define audit_3(_name, _setup, _teardown) audit_internal(_name, _setup, _teardown, __LINE__)
-
-// These are not super relevant; they're just some initial values.
-// Audit will resize the arrays as needed.
+// You may define these, but they are not super relevant. Just some initial
+// values, audit will resize the arrays as needed.
 #define AUDIT_INITIAL_N_TESTS 50
 #define AUDIT_INITIAL_N_ASSERTS 100
 #define AUDIT_INITIAL_N_MESSAGES 100
 
-#define AUDIT_CONCAT2(v1, v2) v1##v2
-#define AUDIT_CONCAT(v1, v2) AUDIT_CONCAT2(v1, v2)
+// Macro trickery to make default arguments work:
+#define _audit_narg(...) _audit_arg_1(__VA_ARGS__, _audit_rseq_n())
+#define _audit_arg_1(...) _audit_arg_n(__VA_ARGS__)
+#define _audit_arg_n(_1, _2, _3, _4, N, ...) N
+#define _audit_rseq_n() 4, 3, 2, 1, 0
+
+#define _audit_def_1(_name, _n) _##_name##_n
+#define _audit_def(_name, _n) _audit_def_1(_name, _n)
+
+#define _audit_1(_name) _audit_internal(_name, NULL, NULL, __LINE__)
+#define _audit_2(_name, _setup) _audit_internal(_name, _setup, NULL, __LINE__)
+#define _audit_3(_name, _setup, _teardown) _audit_internal(_name, _setup, _teardown, __LINE__)
+
+// Maybe I could consolidate these with _audit_def, but I don't want to think about it.
+#define _audit_concat_1(v1, v2) v1##v2
+#define _audit_concat(v1, v2) _audit_concat_1(v1, v2)
 
 typedef struct audit_v audit_v;
 typedef void (*audit_check_fn)(audit_v *this);
@@ -83,14 +91,13 @@ typedef struct audit_v {
 	audit_setup_teardown teardown;
 } audit_v;
 
-#define audit_internal(str_name__, setup__, teardown__, line__)                                    \
-	void AUDIT_CONCAT(audit_test__, line__)(audit_v * this);                                   \
-	__attribute__((constructor)) static void AUDIT_CONCAT(audit_init_, line__)(void)           \
+#define _audit_internal(_name, _setup, _teardown, _line)                                           \
+	void _audit_concat(audit_test__, _line)(audit_v * this);                                   \
+	__attribute__((constructor)) static void _audit_concat(audit_init_, _line)(void)           \
 	{                                                                                          \
-		audit_register_test(str_name__, AUDIT_CONCAT(audit_test__, line__), setup__,       \
-				    teardown__);                                                   \
+		audit_register_test(_name, _audit_concat(audit_test__, _line), _setup, _teardown); \
 	}                                                                                          \
-	void AUDIT_CONCAT(audit_test__, line__)(audit_v * this)
+	void _audit_concat(audit_test__, _line)(audit_v * this)
 
 extern audit_v *audit_tests;
 extern size_t audit_tests_count;
@@ -145,13 +152,13 @@ bool audit_first_failed_assert = true;
 
 #define audit_ensure_capacity(_name)                                                               \
 	do {                                                                                       \
-		if (AUDIT_CONCAT(_name, _count) == AUDIT_CONCAT(_name, _max)) {                    \
-			size_t new_max = AUDIT_CONCAT(_name, _max) * 2;                            \
+		if (_audit_concat(_name, _count) == _audit_concat(_name, _max)) {                  \
+			size_t new_max = _audit_concat(_name, _max) * 2;                           \
 			_name = realloc(_name, sizeof(*_name) * new_max);                          \
 			if (!_name) {                                                              \
 				exit(EXIT_FAILURE);                                                \
 			}                                                                          \
-			AUDIT_CONCAT(_name, _max) = new_max;                                       \
+			_audit_concat(_name, _max) = new_max;                                      \
 		}                                                                                  \
 	} while (0)
 
@@ -200,9 +207,9 @@ void audit_print_dots(void)
 		}
 
 		if (audit_assert_results[i]) {
-			printf(AUDIT_OK_ AUDIT_PASS_ASSERT_STR_ AUDIT_RESET_);
+			printf(AUDIT_COLOR_OK AUDIT_PASS_ASSERT_STR AUDIT_RESET);
 		} else {
-			printf(AUDIT_FAIL_ AUDIT_FAIL_ASSERT_STR_ AUDIT_RESET_);
+			printf(AUDIT_COLOR_FAIL AUDIT_FAIL_ASSERT_STR AUDIT_RESET);
 		}
 	}
 	printf("\n\n");
@@ -211,11 +218,11 @@ void audit_print_dots(void)
 void audit_print_failures(void)
 {
 	if (audit_failed_tests_count == 0) {
-		printf(AUDIT_OK_ "AUDIT OK\n" AUDIT_RESET_);
+		printf(AUDIT_COLOR_OK "AUDIT OK\n" AUDIT_RESET);
 		return;
 	}
 
-	printf(AUDIT_FAIL_ "AUDIT FAILED\n" AUDIT_RESET_);
+	printf(AUDIT_COLOR_FAIL "AUDIT FAILED\n" AUDIT_RESET);
 
 	for (size_t i = 0; i < audit_messages_count; i++) {
 		printf("%s\n", audit_messages[i]);
@@ -226,12 +233,12 @@ void audit_print_failures(void)
 void audit_print_summary(void)
 {
 	if (audit_failed_tests_count == 0) {
-		printf(AUDIT_OK_);
+		printf(AUDIT_COLOR_OK);
 	} else {
-		printf(AUDIT_FAIL_);
+		printf(AUDIT_COLOR_FAIL);
 	}
 
-	printf("%zu tests (%zu failed), %zu assertions (%zu failed)" AUDIT_RESET_ "\n\n",
+	printf("%zu tests (%zu failed), %zu assertions (%zu failed)" AUDIT_RESET "\n\n",
 	       audit_tests_count, audit_failed_tests_count, audit_assert_count,
 	       audit_failed_asserts_count);
 }
@@ -243,7 +250,7 @@ void audit_print_results(void)
 	audit_print_summary();
 }
 
-void audit_run_test(size_t test_n)
+void audit_run(size_t test_n)
 {
 	audit_setup_teardown setup;
 	audit_setup_teardown teardown;
@@ -265,56 +272,46 @@ void audit_run_test(size_t test_n)
 
 void audit_run_selected(void)
 {
-	printf("Running selected tests:\n");
 	for (size_t i = 0; i < audit_chosen_tests_count; i++) {
 		size_t test_n = audit_chosen_tests[i];
 		if (test_n > audit_tests_count) {
-			printf(AUDIT_FAIL_ "Test %lu doesn't exist", i);
+			printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist", i);
 			return;
 		} else {
-			printf(AUDIT_INFO_ "%lu: %s" AUDIT_RESET_ "\n", test_n,
+			printf(AUDIT_COLOR_INFO "%lu: %s" AUDIT_RESET "\n", test_n,
 			       audit_tests[test_n].name);
 		}
 	}
 
 	for (size_t i = 0; i < audit_chosen_tests_count; i++) {
-		audit_run_test(audit_chosen_tests[i]);
+		audit_run(audit_chosen_tests[i]);
 	}
 }
 
 void audit_run_all(void)
 {
-	if (audit_chosen_tests_count > 0) {
-		audit_run_selected();
-		return;
-	}
-
-	printf("Running all tests.\n");
-
 	for (size_t i = 0; i < audit_tests_count; i++) {
-		audit_run_test(i);
+		audit_run(i);
 	}
 }
 
-void audit_print_available_tests(void)
+void audit_print_available(void)
 {
-	for (size_t i = 0;; i++) {
-		if (!audit_tests[i].name) {
-			break;
-		}
-		printf(AUDIT_INFO_ "%i: %s" AUDIT_RESET_ "\n", audit_tests[i].n,
+	for (size_t i = 0; i < audit_tests_count; i++) {
+		printf(AUDIT_COLOR_INFO "%i: %s" AUDIT_RESET "\n", audit_tests[i].n,
 		       audit_tests[i].name);
 	}
 }
 
-bool audit_save_test(char *test_n)
+bool audit_choose(char *test_n)
 {
 	char *end = NULL;
 	size_t n = (size_t)strtol(test_n, &end, 10);
 
+	// TODO: Deal better with errors.
 	if (*end) {
-		fprintf(stderr, "Argument can't be read as number: %s\n", test_n);
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "Couldn't load argument as test number: %s\n", test_n);
+		return false;
 	}
 
 	audit_ensure_capacity(audit_chosen_tests);
@@ -326,6 +323,7 @@ void audit_free_resources(void)
 {
 	free(audit_tests);
 	free(audit_chosen_tests);
+	// TODO: Actually free all the string messages:
 	free(audit_messages);
 	free(audit_assert_results);
 }
@@ -354,19 +352,27 @@ int main(int argc, char **argv)
 
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--list") == 0) {
-			audit_print_available_tests();
+			audit_print_available();
 			return 0;
 		}
 
-		if (!audit_save_test(argv[i])) {
+		// TODO: Deal better with non-existent tests.
+		if (!audit_choose(argv[i])) {
 			fprintf(stderr, "Test %s not found.\n", argv[i]);
 			exit(EXIT_FAILURE);
 		};
 	}
 
-	printf(AUDIT_OK_ "AUDIT START" AUDIT_RESET_ "\n\n");
+	printf(AUDIT_COLOR_OK "AUDIT START" AUDIT_RESET "\n\n");
 
-	audit_run_all();
+	if (audit_chosen_tests_count > 0) {
+		printf("Running selected tests:\n\n");
+		audit_run_selected();
+	} else {
+		printf("Running all tests.\n");
+		audit_run_all();
+	}
+
 	audit_print_results();
 
 	return audit_failed_tests_count == 0 ? 0 : -1;
