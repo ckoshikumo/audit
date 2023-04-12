@@ -294,27 +294,27 @@ void audit_print_available(void)
 	}
 }
 
-void audit_select(char *test_n)
+void audit_select(char *input)
 {
 	char *end = NULL;
-	size_t n = (size_t)strtol(test_n, &end, 10);
+	size_t test_n = (size_t)strtol(input, &end, 10);
 
 	if (*end) {
 		printf(AUDIT_COLOR_FAIL "\nERROR: " AUDIT_COLOR_RESET
 					"Couldn't load argument as test number: %s"
 					"\n\n",
-		       test_n);
+		       input);
 		return;
 	}
 
-	if (n >= audit_tests.count) {
-		printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist.\n" AUDIT_COLOR_RESET, n);
+	if (test_n >= audit_tests.count) {
+		printf(AUDIT_COLOR_FAIL "Test %lu doesn't exist.\n" AUDIT_COLOR_RESET, test_n);
 		printf("Run audit --list to see available tests.\n");
 		return;
 	}
 
 	audit_ensure_capacity(audit_selected);
-	audit_selected.data[audit_selected.count++] = n;
+	audit_selected.data[audit_selected.count++] = test_n;
 }
 
 void audit_free_resources(void)
