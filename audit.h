@@ -64,9 +64,9 @@
 
 // These are not super relevant; they're just some initial values.
 // Audit will resize the arrays as needed.
-#define AUDIT_INITIAL_N_TESTS 100
+#define AUDIT_INITIAL_N_TESTS 50
 #define AUDIT_INITIAL_N_ASSERTS 100
-#define AUDIT_INITIAL_N_MESSAGES 50
+#define AUDIT_INITIAL_N_MESSAGES 100
 
 #define AUDIT_CONCAT2(v1, v2) v1##v2
 #define AUDIT_CONCAT(v1, v2) AUDIT_CONCAT2(v1, v2)
@@ -106,7 +106,7 @@ extern size_t audit_messages_max;
 
 extern char *audit_assert_results;
 extern size_t audit_assert_results_count;
-extern size_t audit_max_assert_results;
+extern size_t audit_assert_results_max;
 
 extern size_t audit_assert_count;
 extern size_t audit_failed_tests_count;
@@ -117,7 +117,6 @@ void audit_register_test(char *name, audit_check_fn fn, audit_setup_teardown set
 			 audit_setup_teardown teardown);
 void audit_store_message(const char *fmt, ...);
 void audit_store_assert_result(bool res);
-void audit_check_test_count(void);
 
 #endif // INCLUDE_AUDIT_H
 
@@ -137,71 +136,40 @@ size_t audit_messages_max = 0;
 
 char *audit_assert_results = NULL;
 size_t audit_assert_results_count = 0;
-size_t audit_max_assert_results = 0;
+size_t audit_assert_results_max = 0;
 
 size_t audit_assert_count = 0;
 size_t audit_failed_tests_count = 0;
 size_t audit_failed_asserts_count = 0;
 bool audit_first_failed_assert = true;
 
+#define audit_ensure_capacity(_name)                                                               \
+	do {                                                                                       \
+		if (AUDIT_CONCAT(_name, _count) == AUDIT_CONCAT(_name, _max)) {                    \
+			size_t new_max = AUDIT_CONCAT(_name, _max) * 2;                            \
+			_name = realloc(_name, sizeof(*_name) * new_max);                          \
+			if (!_name) {                                                              \
+				exit(EXIT_FAILURE);                                                \
+			}                                                                          \
+			AUDIT_CONCAT(_name, _max) = new_max;                                       \
+		}                                                                                  \
+	} while (0)
+
 void audit_register_test(char *name, audit_check_fn fn, audit_setup_teardown setup,
 			 audit_setup_teardown teardown)
 {
 	static int counter = 0;
-	audit_check_test_count();
+
+	audit_ensure_capacity(audit_tests);
 	audit_tests[audit_tests_count++] =
 	    (audit_v){.name = name, .n = counter++, .fn = fn, .setup = setup, .teardown = teardown};
 }
 
-void audit_check_message_count(void)
-{
-	if (audit_messages_count < audit_messages_max) {
-		return;
-	}
-
-	size_t new_max = audit_messages_max * 2;
-	audit_messages = realloc(audit_messages, sizeof(*audit_messages) * new_max);
-	if (!audit_messages) {
-		exit(EXIT_FAILURE);
-	}
-	audit_messages_max = new_max;
-}
-
-void audit_check_test_count(void)
-{
-	if (audit_tests_count < audit_tests_max) {
-		return;
-	}
-
-	size_t new_max = audit_tests_max * 2;
-	audit_tests = realloc(audit_tests, sizeof(*audit_tests) * new_max);
-	if (!audit_tests) {
-		exit(EXIT_FAILURE);
-	}
-	audit_tests_max = new_max;
-}
-
-void audit_check_assert_result_count(void)
-{
-	if (audit_assert_results_count < audit_max_assert_results) {
-		return;
-	}
-
-	size_t new_max = audit_max_assert_results * 2;
-	audit_assert_results =
-	    realloc(audit_assert_results, sizeof(*audit_assert_results) * new_max);
-	if (!audit_assert_results) {
-		exit(EXIT_FAILURE);
-	}
-	audit_max_assert_results = new_max;
-}
-
 void audit_store_message(const char *fmt, ...)
 {
-	audit_check_message_count();
-
 	va_list args, args_copy;
 	va_start(args, fmt);
+
 	va_copy(args_copy, args);
 	size_t s = (size_t)vsnprintf(NULL, 0, fmt, args_copy) + 1;
 	va_end(args_copy);
@@ -214,12 +182,13 @@ void audit_store_message(const char *fmt, ...)
 	vsnprintf(str, s, fmt, args);
 	va_end(args);
 
+	audit_ensure_capacity(audit_messages);
 	audit_messages[audit_messages_count++] = str;
 }
 
 void audit_store_assert_result(bool res)
 {
-	audit_check_assert_result_count();
+	audit_ensure_capacity(audit_assert_results);
 	audit_assert_results[audit_assert_results_count++] = res;
 }
 
@@ -313,7 +282,7 @@ void audit_run_selected(void)
 	}
 }
 
-void audit_run_tests(void)
+void audit_run_all(void)
 {
 	if (audit_chosen_tests_count > 0) {
 		audit_run_selected();
@@ -373,7 +342,7 @@ __attribute__((constructor)) static void audit_init(void)
 	audit_messages_max = AUDIT_INITIAL_N_MESSAGES;
 
 	audit_assert_results = malloc(sizeof(*audit_assert_results) * AUDIT_INITIAL_N_ASSERTS);
-	audit_max_assert_results = AUDIT_INITIAL_N_ASSERTS;
+	audit_assert_results_max = AUDIT_INITIAL_N_ASSERTS;
 
 	if (!audit_tests || !audit_chosen_tests || !audit_messages || !audit_assert_results) {
 		exit(EXIT_FAILURE);
@@ -397,7 +366,7 @@ int main(int argc, char **argv)
 
 	printf(AUDIT_OK_ "AUDIT START" AUDIT_RESET_ "\n\n");
 
-	audit_run_tests();
+	audit_run_all();
 	audit_print_results();
 
 	return audit_failed_tests_count == 0 ? 0 : -1;
