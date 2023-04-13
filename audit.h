@@ -110,6 +110,7 @@ extern struct audit_state_s audit_state;
 	}                                                                                          \
 	void _audit_concat(audit_test__, _line)(audit_test_s * this)
 
+// TODO: prefix these with underscores
 void audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_teardown_fn td);
 void audit_store_message(const char *fmt, ...);
 void audit_store_result(bool res);
@@ -359,6 +360,7 @@ int main(int argc, char **argv)
 
 	printf(AUDIT_PRINT_OK("AUDIT START\n\n"));
 
+	// TODO: Put the printfs in their functions:
 	if (audit_selected.count > 0) {
 		printf("Running selected tests:\n\n");
 		audit_run_selected();
