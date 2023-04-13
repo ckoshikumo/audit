@@ -114,6 +114,10 @@ void audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_teard
 void audit_store_message(const char *fmt, ...);
 void audit_store_result(bool res);
 
+#define AUDIT_PRINT_OK(_str) AUDIT_COLOR_OK _str AUDIT_COLOR_RESET
+#define AUDIT_PRINT_FAIL(_str) AUDIT_COLOR_FAIL _str AUDIT_COLOR_RESET
+#define AUDIT_PRINT_INFO(_str) AUDIT_COLOR_INFO _str AUDIT_COLOR_RESET
+
 #endif // INCLUDE_AUDIT_H
 
 #ifdef AUDIT_IMPLEMENTATION
@@ -155,10 +159,6 @@ struct audit_messages_s {
 			}                                                                          \
 		}                                                                                  \
 	} while (0)
-
-#define AUDIT_PRINT_OK(_str) AUDIT_COLOR_OK _str AUDIT_COLOR_RESET
-#define AUDIT_PRINT_FAIL(_str) AUDIT_COLOR_FAIL _str AUDIT_COLOR_RESET
-#define AUDIT_PRINT_INFO(_str) AUDIT_COLOR_INFO _str AUDIT_COLOR_RESET
 
 void audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_setup_fn td)
 {
