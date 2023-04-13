@@ -53,67 +53,74 @@
 #define check(_assert, _desc, _msg, ...)                                                           \
 	do {                                                                                       \
 		_check_internals(_assert);                                                         \
-		audit_store_message(_pre_msg _desc " [" _msg "]", __FILE__, __LINE__,              \
-				    ##__VA_ARGS__);                                                \
+		_audit_store_message(_audit_pre_msg _desc " [" _msg "]", __FILE__, __LINE__,       \
+				     ##__VA_ARGS__);                                               \
 	} while (0)
 
 #define review(_assert, _msg, ...)                                                                 \
 	do {                                                                                       \
 		audit_state.assert_count++;                                                        \
 		if (_assert) {                                                                     \
-			audit_store_result(true);                                                  \
+			_audit_store_result(true);                                                 \
 			break;                                                                     \
 		}                                                                                  \
-		audit_store_result(false);                                                         \
+		_audit_store_result(false);                                                        \
 		if (audit_state.first_failed_assert) {                                             \
 			audit_state.first_failed_assert = false;                                   \
 			audit_state.failed_tests++;                                                \
-			audit_store_message(AUDIT_COLOR_INFO "\n%i: %s" AUDIT_COLOR_RESET,         \
-					    this->n, this->name);                                  \
+			_audit_store_message(AUDIT_COLOR_INFO "\n%i: %s" AUDIT_COLOR_RESET,        \
+					     this->n, this->name);                                 \
 		}                                                                                  \
 		audit_state.failed_asserts++;                                                      \
-		audit_store_message("\tline %i: " _msg, __LINE__, ##__VA_ARGS__);                  \
+		_audit_store_message("\tline %i: " _msg, __LINE__, ##__VA_ARGS__);                 \
 	} while (0)
 
 #define check_eq(_lhs, _rhs, _fmt, _desc) _check(==, _lhs, _rhs, _fmt, _desc, _eq_msg)
-#define check_neq(_lhs, _rhs, _fmt, _desc) _check(!=, _lhs, _rhs, _fmt, _desc, _neq_msg)
-#define check_lt(_lhs, _rhs, _fmt, _desc) _check(<, _lhs, _rhs, _fmt, _desc, _lt_msg)
-#define check_gt(_lhs, _rhs, _fmt, _desc) _check(>, _lhs, _rhs, _fmt, _desc, _gt_msg)
-#define check_lteq(_lhs, _rhs, _fmt, _desc) _check(<=, _lhs, _rhs, _fmt, _desc, _lteq_msg)
-#define check_gteq(_lhs, _rhs, _fmt, _desc) _check(>=, _lhs, _rhs, _fmt, _desc, _gteq_msg)
+#define check_neq(_lhs, _rhs, _fmt, _desc) _check(!=, _lhs, _rhs, _fmt, _desc, _audit_neq_msg)
+#define check_lt(_lhs, _rhs, _fmt, _desc) _check(<, _lhs, _rhs, _fmt, _desc, _audit_lt_msg)
+#define check_gt(_lhs, _rhs, _fmt, _desc) _check(>, _lhs, _rhs, _fmt, _desc, _audit_gt_msg)
+#define check_lteq(_lhs, _rhs, _fmt, _desc) _check(<=, _lhs, _rhs, _fmt, _desc, _audit_lteq_msg)
+#define check_gteq(_lhs, _rhs, _fmt, _desc) _check(>=, _lhs, _rhs, _fmt, _desc, _audit_gteq_msg)
 
 // INTERNALS:
 #define _check(_cmp, _lhs, _rhs, _fmt, _desc, _msg)                                                \
 	do {                                                                                       \
 		_check_internals(_lhs _cmp _rhs);                                                  \
-		audit_store_message(_pre_msg _desc " " _msg(_lhs, _rhs, _fmt));                    \
+		_audit_store_message(_audit_pre_msg _desc " " _msg(_lhs, _rhs, _fmt));             \
 	} while (0)
 
 #define _check_internals(_assert)                                                                  \
 	audit_state.assert_count++;                                                                \
 	if (_assert) {                                                                             \
-		audit_store_result(true);                                                          \
+		_audit_store_result(true);                                                         \
 		break;                                                                             \
 	}                                                                                          \
-	audit_store_result(false);                                                                 \
+	_audit_store_result(false);                                                                \
 	if (audit_state.first_failed_assert) {                                                     \
 		audit_state.first_failed_assert = false;                                           \
 		audit_state.failed_tests++;                                                        \
-		audit_store_message(AUDIT_PRINT_INFO("\n%i: %s"), this->n, this->name);            \
+		_audit_store_message(AUDIT_PRINT_INFO("\n%i: %s"), this->n, this->name);           \
 	}                                                                                          \
 	audit_state.failed_asserts++;
 
-#define _pre_msg "\t%s:%i:\t"
+#define _audit_internal(_name, _setup, _teardown, _line)                                           \
+	void _audit_concat(audit_test__, _line)(audit_test_s * this);                              \
+	__attribute__((constructor)) static void _audit_concat(audit_init_, _line)(void)           \
+	{                                                                                          \
+		_audit_register(_name, _audit_concat(audit_test__, _line), _setup, _teardown);     \
+	}                                                                                          \
+	void _audit_concat(audit_test__, _line)(audit_test_s * this)
 
+#define _audit_pre_msg "\t%s:%i:\t"
 #define _eq_msg(_lhs, _rhs, _fmt)                                                                  \
 	"[expected " _fmt ", actual " _fmt "]", __FILE__, __LINE__, _lhs, _rhs
-#define _neq_msg(_lhs, _rhs, _fmt) "[unexpected value: " _fmt "]", __FILE__, __LINE__, _rhs
-#define _ineq_msg(_op, _lhs, _rhs, _fmt)                                                           \
+#define _audit_neq_msg(_lhs, _rhs, _fmt) "[unexpected value: " _fmt "]", __FILE__, __LINE__, _rhs
+#define _audit_ineq_msg(_op, _lhs, _rhs, _fmt)                                                     \
 	"[expected " _fmt " " _op " " _fmt "]", __FILE__, __LINE__, _lhs, _rhs
-#define _lt_msg(_lhs, _rhs, _fmt) _ineq_msg("<", _lhs, _rhs, _fmt)
-#define _gt_msg(_lhs, _rhs, _fmt) _ineq_msg(">", _lhs, _rhs, _fmt)
-#define _lteq_msg(_lhs, _rhs, _fmt) _ineq_msg("<=", _lhs, _rhs, _fmt)
-#define _gteq_msg(_lhs, _rhs, _fmt) _ineq_msg(">=", _lhs, _rhs, _fmt)
+#define _audit_lt_msg(_lhs, _rhs, _fmt) _audit_ineq_msg("<", _lhs, _rhs, _fmt)
+#define _audit_gt_msg(_lhs, _rhs, _fmt) _audit_ineq_msg(">", _lhs, _rhs, _fmt)
+#define _audit_lteq_msg(_lhs, _rhs, _fmt) _audit_ineq_msg("<=", _lhs, _rhs, _fmt)
+#define _audit_gteq_msg(_lhs, _rhs, _fmt) _audit_ineq_msg(">=", _lhs, _rhs, _fmt)
 
 // Maybe I could consolidate these with _audit_def, but I don't want to think about it.
 #define _audit_concat_1(v1, v2) v1##v2
@@ -131,6 +138,10 @@
 #define _audit_1(_name) _audit_internal(_name, NULL, NULL, __LINE__)
 #define _audit_2(_name, _setup) _audit_internal(_name, _setup, NULL, __LINE__)
 #define _audit_3(_name, _setup, _teardown) _audit_internal(_name, _setup, _teardown, __LINE__)
+
+#define AUDIT_PRINT_OK(_str) AUDIT_COLOR_OK _str AUDIT_COLOR_RESET
+#define AUDIT_PRINT_FAIL(_str) AUDIT_COLOR_FAIL _str AUDIT_COLOR_RESET
+#define AUDIT_PRINT_INFO(_str) AUDIT_COLOR_INFO _str AUDIT_COLOR_RESET
 
 typedef struct audit_test_s audit_test_s;
 
@@ -155,22 +166,9 @@ struct audit_state_s {
 
 extern struct audit_state_s audit_state;
 
-#define _audit_internal(_name, _setup, _teardown, _line)                                           \
-	void _audit_concat(audit_test__, _line)(audit_test_s * this);                              \
-	__attribute__((constructor)) static void _audit_concat(audit_init_, _line)(void)           \
-	{                                                                                          \
-		audit_register(_name, _audit_concat(audit_test__, _line), _setup, _teardown);      \
-	}                                                                                          \
-	void _audit_concat(audit_test__, _line)(audit_test_s * this)
-
-// TODO: prefix these with underscores
-void audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_teardown_fn td);
-void audit_store_message(const char *fmt, ...);
-void audit_store_result(bool res);
-
-#define AUDIT_PRINT_OK(_str) AUDIT_COLOR_OK _str AUDIT_COLOR_RESET
-#define AUDIT_PRINT_FAIL(_str) AUDIT_COLOR_FAIL _str AUDIT_COLOR_RESET
-#define AUDIT_PRINT_INFO(_str) AUDIT_COLOR_INFO _str AUDIT_COLOR_RESET
+void _audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_teardown_fn td);
+void _audit_store_message(const char *fmt, ...);
+void _audit_store_result(bool res);
 
 #endif // INCLUDE_AUDIT_H
 
@@ -209,14 +207,14 @@ struct audit_messages_s {
 		}                                                                                  \
 	} while (0)
 
-void audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_setup_fn td)
+void _audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_setup_fn td)
 {
 	audit_ensure_capacity(audit_tests);
 	audit_tests.data[audit_tests.count++] =
 	    (audit_test_s){.name = name, .fn = fn, .setup = st, .teardown = td};
 }
 
-void audit_store_message(const char *fmt, ...)
+void _audit_store_message(const char *fmt, ...)
 {
 	va_list args, args_copy;
 	va_start(args, fmt);
@@ -237,7 +235,7 @@ void audit_store_message(const char *fmt, ...)
 	audit_messages.data[audit_messages.count++] = str;
 }
 
-void audit_store_result(bool res)
+void _audit_store_result(bool res)
 {
 	audit_ensure_capacity(audit_results);
 	audit_results.data[audit_results.count++] = res;
