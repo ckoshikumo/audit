@@ -33,8 +33,29 @@
 #define AUDIT_COLOR_RESET "\x1b[0m"
 #endif // AUDIT_NO_COLORS
 
+// You may define these, but they are not super relevant. Just some initial
+// values, audit will resize the arrays as needed.
+#ifndef AUDIT_INITIAL_N_TESTS
+#define AUDIT_INITIAL_N_TESTS 50
+#endif
+
+#ifndef AUDIT_INITIAL_N_ASSERTS
+#define AUDIT_INITIAL_N_ASSERTS 100
+#endif
+
+#ifndef AUDIT_INITIAL_N_MESSAGES
+#define AUDIT_INITIAL_N_MESSAGES 100
+#endif
+
 // INTERFACE:
 #define audit(...) _audit_def(audit_, _audit_narg(__VA_ARGS__))(__VA_ARGS__)
+
+#define check(_assert, _desc, _msg, ...)                                                           \
+	do {                                                                                       \
+		_check_internals(_assert);                                                          \
+		audit_store_message(_pre_msg _desc " [" _msg "]", __FILE__, __LINE__,              \
+				    ##__VA_ARGS__);                                                \
+	} while (0)
 
 #define review(_assert, _msg, ...)                                                                 \
 	do {                                                                                       \
@@ -54,19 +75,55 @@
 		audit_store_message("\tline %i: " _msg, __LINE__, ##__VA_ARGS__);                  \
 	} while (0)
 
-// INTERNALS:
+#define check_eq(_lhs, _rhs, _fmt, _desc) _check(==, _lhs, _rhs, _fmt, _desc, _eq_msg)
+#define check_neq(_lhs, _rhs, _fmt, _desc) _check(!=, _lhs, _rhs, _fmt, _desc, _neq_msg)
+#define check_lt(_lhs, _rhs, _fmt, _desc) _check(<, _lhs, _rhs, _fmt, _desc, _lt_msg)
+#define check_gt(_lhs, _rhs, _fmt, _desc) _check(>, _lhs, _rhs, _fmt, _desc, _gt_msg)
+#define check_lteq(_lhs, _rhs, _fmt, _desc) _check(<=, _lhs, _rhs, _fmt, _desc, _lteq_msg)
+#define check_gteq(_lhs, _rhs, _fmt, _desc) _check(>=, _lhs, _rhs, _fmt, _desc, _gteq_msg)
 
-// You may define these, but they are not super relevant. Just some initial
-// values, audit will resize the arrays as needed.
-#define AUDIT_INITIAL_N_TESTS 50
-#define AUDIT_INITIAL_N_ASSERTS 100
-#define AUDIT_INITIAL_N_MESSAGES 100
+// INTERNALS:
+#define _check(_cmp, _lhs, _rhs, _fmt, _desc, _msg)                                                \
+	do {                                                                                       \
+		_check_internals(_lhs _cmp _rhs);                                                   \
+		audit_store_message(_pre_msg _desc " " _msg(_lhs, _rhs, _fmt));                    \
+	} while (0)
+
+#define _check_internals(_assert)                                                                   \
+	audit_state.assert_count++;                                                                \
+	if (_assert) {                                                                             \
+		audit_store_result(true);                                                          \
+		break;                                                                             \
+	}                                                                                          \
+	audit_store_result(false);                                                                 \
+	if (audit_state.first_failed_assert) {                                                     \
+		audit_state.first_failed_assert = false;                                           \
+		audit_state.failed_tests++;                                                        \
+		audit_store_message(AUDIT_PRINT_INFO("\n%i: %s"), this->n, this->name);            \
+	}                                                                                          \
+	audit_state.failed_asserts++;
+
+#define _pre_msg "\t%s:%i:\t"
+
+#define _eq_msg(_lhs, _rhs, _fmt)                                                                  \
+	"[expected " _fmt ", actual " _fmt "]", __FILE__, __LINE__, _lhs, _rhs
+#define _neq_msg(_lhs, _rhs, _fmt) "[unexpected value: " _fmt "]", __FILE__, __LINE__, _rhs
+#define _ineq_msg(_op, _lhs, _rhs, _fmt)                                                           \
+	"[expected " _fmt " " _op " " _fmt "]", __FILE__, __LINE__, _lhs, _rhs
+#define _lt_msg(_lhs, _rhs, _fmt) _ineq_msg("<", _lhs, _rhs, _fmt)
+#define _gt_msg(_lhs, _rhs, _fmt) _ineq_msg(">", _lhs, _rhs, _fmt)
+#define _lteq_msg(_lhs, _rhs, _fmt) _ineq_msg("<=", _lhs, _rhs, _fmt)
+#define _gteq_msg(_lhs, _rhs, _fmt) _ineq_msg(">=", _lhs, _rhs, _fmt)
+
+// Maybe I could consolidate these with _audit_def, but I don't want to think about it.
+#define _audit_concat_1(v1, v2) v1##v2
+#define _audit_concat(v1, v2) _audit_concat_1(v1, v2)
 
 // Macro trickery to make default arguments work:
 #define _audit_narg(...) _audit_arg_1(__VA_ARGS__, _audit_rseq_n())
 #define _audit_arg_1(...) _audit_arg_n(__VA_ARGS__)
-#define _audit_arg_n(_1, _2, _3, _4, N, ...) N
-#define _audit_rseq_n() 4, 3, 2, 1, 0
+#define _audit_arg_n(_1, _2, _3, N, ...) N
+#define _audit_rseq_n() 3, 2, 1, 0
 
 #define _audit_def_1(_name, _n) _##_name##_n
 #define _audit_def(_name, _n) _audit_def_1(_name, _n)
@@ -74,10 +131,6 @@
 #define _audit_1(_name) _audit_internal(_name, NULL, NULL, __LINE__)
 #define _audit_2(_name, _setup) _audit_internal(_name, _setup, NULL, __LINE__)
 #define _audit_3(_name, _setup, _teardown) _audit_internal(_name, _setup, _teardown, __LINE__)
-
-// Maybe I could consolidate these with _audit_def, but I don't want to think about it.
-#define _audit_concat_1(v1, v2) v1##v2
-#define _audit_concat(v1, v2) _audit_concat_1(v1, v2)
 
 typedef struct audit_test_s audit_test_s;
 
