@@ -178,28 +178,23 @@ void audit_store_result(bool res);
 
 struct audit_state_s audit_state = {.first_failed_assert = true};
 
-typedef struct audit_metadata_s {
-	size_t count;
-	size_t max;
-} audit_metadata_s;
-
 struct audit_tests_s {
-	audit_metadata_s;
+	size_t count, max;
 	audit_test_s *data;
 } audit_tests = {.max = AUDIT_INITIAL_N_TESTS};
 
 struct audit_selected_s {
-	audit_metadata_s;
+	size_t count, max;
 	size_t *data;
 } audit_selected = {.max = AUDIT_INITIAL_N_TESTS};
 
 struct audit_results_s {
-	audit_metadata_s;
+	size_t count, max;
 	size_t *data;
 } audit_results = {.max = AUDIT_INITIAL_N_ASSERTS};
 
 struct audit_messages_s {
-	audit_metadata_s;
+	size_t count, max;
 	char **data;
 } audit_messages = {.max = AUDIT_INITIAL_N_MESSAGES};
 
@@ -255,11 +250,8 @@ void audit_print_dots(void)
 			printf("\n");
 		}
 
-		if (audit_results.data[i]) {
-			printf(AUDIT_PRINT_OK(AUDIT_PASS_ASSERT_STR));
-		} else {
-			printf(AUDIT_PRINT_FAIL(AUDIT_FAIL_ASSERT_STR));
-		}
+		audit_results.data[i] ? printf(AUDIT_PRINT_OK(AUDIT_PASS_ASSERT_STR))
+				      : printf(AUDIT_PRINT_FAIL(AUDIT_FAIL_ASSERT_STR));
 	}
 	printf("\n\n");
 }
@@ -297,12 +289,10 @@ void audit_print_results(void)
 
 void audit_run(size_t test_n)
 {
-	audit_setup_fn setup;
-	audit_setup_fn teardown;
-
 	audit_state.first_failed_assert = true;
-	setup = audit_tests.data[test_n].setup;
-	teardown = audit_tests.data[test_n].teardown;
+
+	audit_setup_fn setup = audit_tests.data[test_n].setup;
+	audit_setup_fn teardown = audit_tests.data[test_n].teardown;
 
 	if (setup) {
 		setup();
