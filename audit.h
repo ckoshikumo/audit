@@ -366,9 +366,11 @@ void audit_free_resources(void)
 {
 	free(audit_tests.data);
 	free(audit_selected.data);
-	// TODO: Actually free all the string messages:
-	free(audit_messages.data);
 	free(audit_results.data);
+	for (size_t i = 0; i < audit_messages.count; i++) {
+		free(audit_messages.data[i]);
+	}
+	free(audit_messages.data);
 }
 
 __attribute__((constructor)) static void audit_init(void)
