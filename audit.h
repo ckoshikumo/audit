@@ -52,7 +52,7 @@
 
 #define check(_assert, _desc, _msg, ...)                                                           \
 	do {                                                                                       \
-		_check_internals(_assert);                                                          \
+		_check_internals(_assert);                                                         \
 		audit_store_message(_pre_msg _desc " [" _msg "]", __FILE__, __LINE__,              \
 				    ##__VA_ARGS__);                                                \
 	} while (0)
@@ -85,11 +85,11 @@
 // INTERNALS:
 #define _check(_cmp, _lhs, _rhs, _fmt, _desc, _msg)                                                \
 	do {                                                                                       \
-		_check_internals(_lhs _cmp _rhs);                                                   \
+		_check_internals(_lhs _cmp _rhs);                                                  \
 		audit_store_message(_pre_msg _desc " " _msg(_lhs, _rhs, _fmt));                    \
 	} while (0)
 
-#define _check_internals(_assert)                                                                   \
+#define _check_internals(_assert)                                                                  \
 	audit_state.assert_count++;                                                                \
 	if (_assert) {                                                                             \
 		audit_store_result(true);                                                          \
@@ -217,8 +217,8 @@ struct audit_messages_s {
 void audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_setup_fn td)
 {
 	audit_ensure_capacity(audit_tests);
-	audit_tests.data[audit_tests.count++] = (audit_test_s){
-	    .name = name, .n = audit_tests.count, .fn = fn, .setup = st, .teardown = td};
+	audit_tests.data[audit_tests.count++] =
+	    (audit_test_s){.name = name, .fn = fn, .setup = st, .teardown = td};
 }
 
 void audit_store_message(const char *fmt, ...)
@@ -317,15 +317,10 @@ void audit_run(size_t test_n)
 
 void audit_run_selected(void)
 {
+	printf("Running selected tests:\n\n");
 	for (size_t i = 0; i < audit_selected.count; i++) {
 		size_t test_n = audit_selected.data[i];
-		if (test_n > audit_tests.count) {
-			printf(AUDIT_PRINT_FAIL("ERROR: Test %lu doesn't exist"), i);
-			return;
-		} else {
-			printf(AUDIT_PRINT_INFO("%lu: %s\n"), test_n,
-			       audit_tests.data[test_n].name);
-		}
+		printf(AUDIT_PRINT_INFO("%lu: %s\n"), test_n, audit_tests.data[test_n].name);
 	}
 
 	for (size_t i = 0; i < audit_selected.count; i++) {
@@ -335,6 +330,7 @@ void audit_run_selected(void)
 
 void audit_run_all(void)
 {
+	printf("Running all tests.\n");
 	for (size_t i = 0; i < audit_tests.count; i++) {
 		audit_run(i);
 	}
@@ -343,8 +339,7 @@ void audit_run_all(void)
 void audit_print_available(void)
 {
 	for (size_t i = 0; i < audit_tests.count; i++) {
-		printf(AUDIT_PRINT_INFO("%i: %s\n"), audit_tests.data[i].n,
-		       audit_tests.data[i].name);
+		printf(AUDIT_PRINT_INFO("%lu: %s\n"), i, audit_tests.data[i].name);
 	}
 }
 
@@ -354,15 +349,12 @@ void audit_select(char *input)
 	size_t test_n = (size_t)strtol(input, &end, 10);
 
 	if (*end) {
-		printf(
-		    AUDIT_PRINT_FAIL("\nERROR: ") "Couldn't load argument as test number: %s\n\n",
-		    input);
+		printf(AUDIT_PRINT_FAIL("ERROR: ") "Couldn't load argument number: %s\n\n", input);
 		return;
 	}
 
 	if (test_n >= audit_tests.count) {
-		printf(AUDIT_PRINT_FAIL("Test %lu doesn't exist.\n"), test_n);
-		printf("\tRun audit --list to see available tests.\n");
+		printf(AUDIT_PRINT_FAIL("ERROR: ") "Test %lu doesn't exist.\n\n", test_n);
 		return;
 	}
 
@@ -412,16 +404,7 @@ int main(int argc, char **argv)
 	}
 
 	printf(AUDIT_PRINT_OK("AUDIT START\n\n"));
-
-	// TODO: Put the printfs in their functions:
-	if (audit_selected.count > 0) {
-		printf("Running selected tests:\n\n");
-		audit_run_selected();
-	} else {
-		printf("Running all tests.\n");
-		audit_run_all();
-	}
-
+	audit_selected.count > 0 ? audit_run_selected() : audit_run_all();
 	audit_print_results();
 
 	return audit_state.failed_asserts == 0 ? 0 : -1;
