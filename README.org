@@ -113,8 +113,6 @@ You don't need to specify both (I mean, you probably should, but you don't need 
 #define AUDIT_IMPLEMENTATION
 #include "audit.h"
 
-#include "stdlib.h"
-
 void st(void) {
         // Setup test environment
 }
