@@ -25,7 +25,7 @@ OK, now being serious: there are three reasons why I made this.
 
 * Usage
 ** Basic usage
-This is the simples way to use audit: one test file testing a header. Here's ~test.c~:
+This is the simplest way to use audit: one test file testing a header. Here's ~test.c~:
 
 #+begin_src C
 #include "header_to_test.h"
