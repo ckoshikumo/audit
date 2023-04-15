@@ -62,7 +62,7 @@ AUDIT FAILED
 1 tests (1 failed), 2 assertions (1 failed)
 #+end_example
 
-Notice that audit prints a description of the expected and actual values; that's why we need to pass the format specifier (in this case, ~"%i"~) when defining the check.
+Notice that audit prints a description of the expected and actual values; that's why we need to pass the format specifier (in this case, "%i") when defining the check.
 
 To list all available audits:
 
@@ -132,23 +132,29 @@ audit("Teardown only", NULL, td) {
 #+end_src
 
 ** Checks
-~audit~ comes with a few predefined checks which with default messages. They are:
+~audit~ comes with a few predefined checks with default messages. They are:
 
 #+begin_src c
-check_eq(_lhs, _rhs, _fmt, _desc) // lhs and rhs are equal
-check_neq(_lhs, _rhs, _fmt, _desc) // lhs and rhs are NOT equal
-check_lt(_lhs, _rhs, _fmt, _desc) // lhs is LESS THAN rhs
-check_gt(_lhs, _rhs, _fmt, _desc) // lhs is GREATER THAN rhs
-check_lteq(_lhs, _rhs, _fmt, _desc) // lhs is LESS THAN or EQUAL TO rhs
-check_gteq(_lhs, _rhs, _fmt, _desc) // lhs is GREATER THAN or EQUAL TO rhs
+check_eq(_lhs, _rhs, _fmt, _desc);// lhs and rhs are equal
+check_neq(_lhs, _rhs, _fmt, _desc); // lhs and rhs are NOT equal
+check_lt(_lhs, _rhs, _fmt, _desc); // lhs is LESS THAN rhs
+check_gt(_lhs, _rhs, _fmt, _desc); // lhs is GREATER THAN rhs
+check_lteq(_lhs, _rhs, _fmt, _desc); // lhs is LESS THAN or EQUAL TO rhs
+check_gteq(_lhs, _rhs, _fmt, _desc); // lhs is GREATER THAN or EQUAL TO rhs
 #+end_src
 
 ~_fmt~ is the format specifier that will be used for printing in case of error, and ~_desc~ is a short description of the check.
 
+We've already seen ~check_eq~ being used, and all the others follow the same pattern:
+
+#+begin_src c
+check_lt(*a, 10.5, "%lf", "Complex computation");
+#+end_src
+
 There's also a generic check for more involved assertions:
 
 #+begin_src c
-check(_assert, _desc, _msg, ...)
+check(_assert, _desc, _msg, ...);
 #+end_src
 
 This allows you to specify a freeform assertion. It doesn't have a default message; you have to specify it by hand, the same as dealing with printf directly:
@@ -218,11 +224,11 @@ And put all the tests themselves in separate, individual files.
 ** Customizations
 - ~AUDIT_NO_COLORS~: define this if you don't want the output to be colorized with ANSI escape codes.
 
-- ~AUDIT_COLOR_FAIL~: color for failed-related output. By default, ~"\x1b[31m"~, which is red.
+- ~AUDIT_COLOR_FAIL~: color for failed-related output. By default, "\x1b[31m", which is red.
 
-- ~AUDIT_COLOR_INFO~: color for information-related output. By default, ~"\x1b[33m"~, which is yellow.
+- ~AUDIT_COLOR_INFO~: color for information-related output. By default, \x1b[33m", which is yellow.
 
-- ~AUDIT_COLOR_OK~: color for success related output. By default, ~"\x1b[32m"~, which is green.
+- ~AUDIT_COLOR_OK~: color for success related output. By default, "\x1b[32m", which is green.
 
 - ~AUDIT_PASS_ASSERT_STR~: by default, the dot . used to indicate a passing check.
 
