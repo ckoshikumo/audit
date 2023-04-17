@@ -113,7 +113,7 @@
 
 #define _audit_pre_msg "\t%s:%i:\t"
 #define _eq_msg(_lhs, _rhs, _fmt)                                                                  \
-	"[expected " _fmt ", actual " _fmt "]", __FILE__, __LINE__, _lhs, _rhs
+	"[expected " _fmt ", actual " _fmt "]", __FILE__, __LINE__, _rhs, _lhs
 #define _audit_neq_msg(_lhs, _rhs, _fmt) "[unexpected value: " _fmt "]", __FILE__, __LINE__, _rhs
 #define _audit_ineq_msg(_op, _lhs, _rhs, _fmt)                                                     \
 	"[expected " _fmt " " _op " " _fmt "]", __FILE__, __LINE__, _lhs, _rhs
