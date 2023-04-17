@@ -151,7 +151,7 @@ typedef audit_setup_fn audit_teardown_fn;
 
 struct audit_test_s {
 	char *name;
-	int n;
+	size_t n;
 	audit_test_fn fn;
 	audit_setup_fn setup;
 	audit_teardown_fn teardown;
@@ -210,8 +210,9 @@ struct audit_messages_s {
 void _audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_setup_fn td)
 {
 	audit_ensure_capacity(audit_tests);
-	audit_tests.data[audit_tests.count++] =
-	    (audit_test_s){.name = name, .fn = fn, .setup = st, .teardown = td};
+	size_t test_n = audit_tests.count++;
+	audit_tests.data[test_n] =
+	    (audit_test_s){.name = name, .n = test_n, .fn = fn, .setup = st, .teardown = td};
 }
 
 void _audit_store_message(const char *fmt, ...)
@@ -308,7 +309,7 @@ void audit_run_selected(void)
 	printf("Running selected tests:\n\n");
 	for (size_t i = 0; i < audit_selected.count; i++) {
 		size_t test_n = audit_selected.data[i];
-		printf(AUDIT_PRINT_INFO("%lu: %s\n"), test_n, audit_tests.data[test_n].name);
+		printf(AUDIT_PRINT_INFO("%lu: %s\n"), i, audit_tests.data[test_n].name);
 	}
 
 	for (size_t i = 0; i < audit_selected.count; i++) {
