@@ -62,7 +62,9 @@ AUDIT FAILED
 1 tests (1 failed), 2 assertions (1 failed)
 #+end_example
 
-Notice that audit prints a description of the expected and actual values; that's why we need to pass the format specifier (in this case, "%i") when defining the check.
+The dots and Xs indicate the individual asserts of the entire suite.
+
+Notice that ~audit~ prints a message with the expected and actual values; that's why we need to pass the format specifier (in this case, "%i") when defining the check.
 
 To list all available audits:
 
@@ -75,7 +77,7 @@ Then, you can select which audits you want to run:
 Will run audits ~1~ and ~4~.
 
 ** Setup and teardown
-The ~audit~ macro can optionally receive function pointers. The ~setup~ function will be called before any check is run, and the ~teardown~ function will be called after all the cehcks are run.
+The ~audit~ macro can optionally receive function pointers. The ~setup~ function will be called before any check is run, and the ~teardown~ function will be called after all the checks are run.
 
 The functions can be named anything, but they must have the signature ~void fn(void)~.
 
@@ -135,12 +137,12 @@ audit("Teardown only", NULL, td) {
 ~audit~ comes with a few predefined checks with default messages. They are:
 
 #+begin_src c
-check_eq(_lhs, _rhs, _fmt, _desc);// lhs and rhs are equal
-check_neq(_lhs, _rhs, _fmt, _desc); // lhs and rhs are NOT equal
-check_lt(_lhs, _rhs, _fmt, _desc); // lhs is LESS THAN rhs
-check_gt(_lhs, _rhs, _fmt, _desc); // lhs is GREATER THAN rhs
-check_lteq(_lhs, _rhs, _fmt, _desc); // lhs is LESS THAN or EQUAL TO rhs
-check_gteq(_lhs, _rhs, _fmt, _desc); // lhs is GREATER THAN or EQUAL TO rhs
+check_eq(_lhs, _rhs, _fmt, _desc);// _lhs and _rhs are equal
+check_neq(_lhs, _rhs, _fmt, _desc); // _lhs and _rhs are NOT equal
+check_lt(_lhs, _rhs, _fmt, _desc); // _lhs is LESS THAN _rhs
+check_gt(_lhs, _rhs, _fmt, _desc); // _lhs is GREATER THAN _rhs
+check_lteq(_lhs, _rhs, _fmt, _desc); // _lhs is LESS THAN or EQUAL TO _rhs
+check_gteq(_lhs, _rhs, _fmt, _desc); // _lhs is GREATER THAN or EQUAL TO _rhs
 #+end_src
 
 ~_fmt~ is the format specifier that will be used for printing in case of error, and ~_desc~ is a short description of the check.
@@ -148,7 +150,7 @@ check_gteq(_lhs, _rhs, _fmt, _desc); // lhs is GREATER THAN or EQUAL TO rhs
 We've already seen ~check_eq~ being used, and all the others follow the same pattern:
 
 #+begin_src c
-check_lt(*a, 10.5, "%lf", "Complex computation");
+check_lt(*a, 10.5, "%lf", "Description of check");
 #+end_src
 
 There's also a generic check for more involved assertions:
@@ -166,7 +168,7 @@ int max = 20;
 check(a[0] > min && a[0] < max, "Item after pushing", "should be between %i and %i", min, max);
 #+end_src
 
-The output will follow ~audit~'s predefined checks, with ~_msg~ being put between brackets:
+The output will follow ~audit~'s predefined checks, with ~_msg~ being put after the description, enclosed in brackets:
 
 #+begin_example
 ../test.c:11:	Item after pushing [should be between 10 and 20]
@@ -175,7 +177,7 @@ The output will follow ~audit~'s predefined checks, with ~_msg~ being put betwee
 ** Multiple test files
 If the test file starts growing too large, or you want to neatly test each header in its own file, it's easy to split the suite.
 
-And here's =test.c=:
+Here's =test.c=:
 
 #+begin_src c
 #include "header_1.h"
@@ -193,7 +195,7 @@ audit("Desc 2") {
 // etc.
 #+end_src
 
-Here's =test_2.c=:
+And here's =test_2.c=:
 
 #+begin_src c
 #include "header_2.h"
@@ -235,7 +237,7 @@ And put all the tests themselves in separate, individual files.
 - ~AUDIT_FAIL_ASSERT_STR~: by default, the X used to indicate a failed check.
 
 
-There's also three defines related to the initial capacity of arrays that hold the tests, asserts and messages. But, unless you absolutely want to avoid reallocations for some reason, and want to ensure that the suite will start with precisely the capacities needes, you don't have to worry about them too much. ~audit~ will resize the arrays as needed.
+There's also three defines related to the initial capacity of arrays that hold the tests, asserts and messages. Unless you absolutely want to avoid reallocations for some reason, and want to ensure that the suite will start with precisely the capacities needes, you don't have to worry about them too much. ~audit~ will resize the arrays as needed.
 
 - ~AUDIT_INITIAL_N_TESTS~: default 50
 
@@ -243,7 +245,7 @@ There's also three defines related to the initial capacity of arrays that hold t
 
 - ~AUDIT_INITIAL_N_MESSAGES~: default 100
 
-Note that messages are only allocated when a check fails.
+(Note that the array holding pointers to the messages is allocated at initialization, but the messages themselves are only allocated when a check fails.)
 
 * Future Plans
 These are some things I have in mind to enhance ~audit~.
@@ -254,7 +256,7 @@ Grouping of ~audits~, for selecting multiple tests at once.
 ** TODO Make it thread-safe and optionally run tests in parallel
 
 ** TODO Print dots one at a time
-Currently, the printing of dots (or Xs) happen all at once, at the end. It's not really a progress indicador, just a visual summary of the final result. It would be nice if the dots were printed as the checks are completed.
+Currently, the printing of dots (or Xs) happen all at once, at the end. It's not *really* a progress indicador, just a visual summary of the final result. It would be nice if the dots were printed as the checks are completed.
 
 ** TODO Trap segfaults and print the offending assertion
 Catch SIGSEGV signals, print the check and bail. (The signal callback can't use stdlib functions, so I'll have to use ~write~ directly.)
