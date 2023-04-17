@@ -261,3 +261,5 @@ Currently, the printing of dots (or Xs) happen all at once, at the end. It's not
 ** TODO Trap segfaults and print the offending assertion
 Catch SIGSEGV signals, print the check and bail. (The signal callback can't use stdlib functions, so I'll have to use ~write~ directly.)
 
+* LICENSE
+MIT
