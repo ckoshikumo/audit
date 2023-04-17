@@ -57,24 +57,6 @@
 				     ##__VA_ARGS__);                                               \
 	} while (0)
 
-#define review(_assert, _msg, ...)                                                                 \
-	do {                                                                                       \
-		audit_state.assert_count++;                                                        \
-		if (_assert) {                                                                     \
-			_audit_store_result(true);                                                 \
-			break;                                                                     \
-		}                                                                                  \
-		_audit_store_result(false);                                                        \
-		if (audit_state.first_failed_assert) {                                             \
-			audit_state.first_failed_assert = false;                                   \
-			audit_state.failed_tests++;                                                \
-			_audit_store_message(AUDIT_COLOR_INFO "\n%i: %s" AUDIT_COLOR_RESET,        \
-					     this->n, this->name);                                 \
-		}                                                                                  \
-		audit_state.failed_asserts++;                                                      \
-		_audit_store_message("\tline %i: " _msg, __LINE__, ##__VA_ARGS__);                 \
-	} while (0)
-
 #define check_eq(_lhs, _rhs, _fmt, _desc) _check(==, _lhs, _rhs, _fmt, _desc, _eq_msg)
 #define check_neq(_lhs, _rhs, _fmt, _desc) _check(!=, _lhs, _rhs, _fmt, _desc, _audit_neq_msg)
 #define check_lt(_lhs, _rhs, _fmt, _desc) _check(<, _lhs, _rhs, _fmt, _desc, _audit_lt_msg)
