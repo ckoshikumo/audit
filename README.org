@@ -59,7 +59,7 @@ AUDIT FAILED
 0: Description of test (group of checks, or asserts)
 	./test.c:8:	Description of check [expected 43, actual 2]
 
-1 tests (1 failed), 2 assertions (1 failed)
+1 tests (1 failed), 2 checks (1 failed)
 #+end_example
 
 The dots and Xs indicate the individual asserts of the entire suite.
@@ -232,16 +232,16 @@ And put all the tests themselves in separate, individual files.
 
 - ~AUDIT_COLOR_OK~: color for success related output. By default, "\x1b[32m", which is green.
 
-- ~AUDIT_PASS_ASSERT_STR~: by default, the dot . used to indicate a passing check.
+- ~AUDIT_PASS_CHECK_STR~: by default, the dot . used to indicate a passing check.
 
-- ~AUDIT_FAIL_ASSERT_STR~: by default, the X used to indicate a failed check.
+- ~AUDIT_FAIL_CHECK_STR~: by default, the X used to indicate a failed check.
 
 
 There's also three defines related to the initial capacity of arrays that hold the tests, asserts and messages. Unless you absolutely want to avoid reallocations for some reason, and want to ensure that the suite will start with precisely the capacities needes, you don't have to worry about them too much. ~audit~ will resize the arrays as needed.
 
 - ~AUDIT_INITIAL_N_TESTS~: default 50
 
-- ~AUDIT_INITIAL_N_ASSERTS~: default 100
+- ~AUDIT_INITIAL_N_CHECKS~: default 100
 
 - ~AUDIT_INITIAL_N_MESSAGES~: default 100
 

@@ -7,13 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef AUDIT_PASS_ASSERT_STR
-#define AUDIT_PASS_ASSERT_STR "."
-#endif // AUDIT_PASS_ASSERT_STR
+#ifndef AUDIT_PASS_CHECK_STR
+#define AUDIT_PASS_CHECK_STR "."
+#endif // AUDIT_PASS_CHECK_STR
 
-#ifndef AUDIT_FAIL_ASSERT_STR
-#define AUDIT_FAIL_ASSERT_STR "X"
-#endif // AUDIT_FAIL_ASSERT_STR
+#ifndef AUDIT_FAIL_CHECK_STR
+#define AUDIT_FAIL_CHECK_STR "X"
+#endif // AUDIT_FAIL_CHECK_STR
 
 #ifdef AUDIT_NO_COLORS
 #define AUDIT_COLOR_FAIL
@@ -39,8 +39,8 @@
 #define AUDIT_INITIAL_N_TESTS 50
 #endif
 
-#ifndef AUDIT_INITIAL_N_ASSERTS
-#define AUDIT_INITIAL_N_ASSERTS 100
+#ifndef AUDIT_INITIAL_N_CHECKS
+#define AUDIT_INITIAL_N_CHECKS 100
 #endif
 
 #ifndef AUDIT_INITIAL_N_MESSAGES
@@ -72,26 +72,26 @@
 	} while (0)
 
 #define _check_internals(_assert)                                                                  \
-	audit_state.assert_count++;                                                                \
+	audit_state.check_count++;                                                                 \
 	if (_assert) {                                                                             \
 		_audit_store_result(true);                                                         \
 		break;                                                                             \
 	}                                                                                          \
 	_audit_store_result(false);                                                                \
-	if (audit_state.first_failed_assert) {                                                     \
-		audit_state.first_failed_assert = false;                                           \
+	if (audit_state.first_failed_check) {                                                      \
+		audit_state.first_failed_check = false;                                            \
 		audit_state.failed_tests++;                                                        \
 		_audit_store_message(AUDIT_PRINT_INFO("\n%i: %s"), this->n, this->name);           \
 	}                                                                                          \
-	audit_state.failed_asserts++;
+	audit_state.failed_checks++;
 
 #define _audit_internal(_name, _setup, _teardown, _line)                                           \
-	void _audit_concat(audit_test__, _line)(audit_test_s * this);                              \
+	void _audit_concat(_audit_test, _line)(audit_test_s * this);                               \
 	__attribute__((constructor)) static void _audit_concat(audit_init_, _line)(void)           \
 	{                                                                                          \
-		_audit_register(_name, _audit_concat(audit_test__, _line), _setup, _teardown);     \
+		_audit_register(_name, _audit_concat(_audit_test, _line), _setup, _teardown);      \
 	}                                                                                          \
-	void _audit_concat(audit_test__, _line)(audit_test_s * this)
+	void _audit_concat(_audit_test, _line)(audit_test_s * this)
 
 #define _audit_pre_msg "\t%s:%i:\t"
 #define _eq_msg(_lhs, _rhs, _fmt)                                                                  \
@@ -140,10 +140,10 @@ struct audit_test_s {
 };
 
 struct audit_state_s {
-	size_t assert_count;
+	size_t check_count;
 	size_t failed_tests;
-	size_t failed_asserts;
-	bool first_failed_assert;
+	size_t failed_checks;
+	bool first_failed_check;
 };
 
 extern struct audit_state_s audit_state;
@@ -156,7 +156,7 @@ void _audit_store_result(bool res);
 
 #ifdef AUDIT_IMPLEMENTATION
 
-struct audit_state_s audit_state = {.first_failed_assert = true};
+struct audit_state_s audit_state = {.first_failed_check = true};
 
 struct audit_tests_s {
 	size_t count, max;
@@ -171,7 +171,7 @@ struct audit_selected_s {
 struct audit_results_s {
 	size_t count, max;
 	size_t *data;
-} audit_results = {.max = AUDIT_INITIAL_N_ASSERTS};
+} audit_results = {.max = AUDIT_INITIAL_N_CHECKS};
 
 struct audit_messages_s {
 	size_t count, max;
@@ -231,15 +231,15 @@ void audit_print_dots(void)
 			printf("\n");
 		}
 
-		audit_results.data[i] ? printf(AUDIT_PRINT_OK(AUDIT_PASS_ASSERT_STR))
-				      : printf(AUDIT_PRINT_FAIL(AUDIT_FAIL_ASSERT_STR));
+		audit_results.data[i] ? printf(AUDIT_PRINT_OK(AUDIT_PASS_CHECK_STR))
+				      : printf(AUDIT_PRINT_FAIL(AUDIT_FAIL_CHECK_STR));
 	}
 	printf("\n\n");
 }
 
 void audit_print_failures(void)
 {
-	if (audit_state.failed_asserts == 0) {
+	if (audit_state.failed_checks == 0) {
 		printf(AUDIT_PRINT_OK("AUDIT OK\n"));
 		return;
 	}
@@ -254,11 +254,11 @@ void audit_print_failures(void)
 
 void audit_print_summary(void)
 {
-	audit_state.failed_asserts == 0 ? printf(AUDIT_COLOR_OK) : printf(AUDIT_COLOR_FAIL);
+	audit_state.failed_checks == 0 ? printf(AUDIT_COLOR_OK) : printf(AUDIT_COLOR_FAIL);
 
-	printf("%zu tests (%zu failed), %zu assertions (%zu failed)\n\n" AUDIT_COLOR_RESET,
-	       audit_tests.count, audit_state.failed_tests, audit_state.assert_count,
-	       audit_state.failed_asserts);
+	printf("%zu tests (%zu failed), %zu checks (%zu failed)\n\n" AUDIT_COLOR_RESET,
+	       audit_tests.count, audit_state.failed_tests, audit_state.check_count,
+	       audit_state.failed_checks);
 }
 
 void audit_print_results(void)
@@ -270,7 +270,7 @@ void audit_print_results(void)
 
 void audit_run(size_t test_n)
 {
-	audit_state.first_failed_assert = true;
+	audit_state.first_failed_check = true;
 
 	audit_setup_fn setup = audit_tests.data[test_n].setup;
 	audit_setup_fn teardown = audit_tests.data[test_n].teardown;
@@ -380,7 +380,7 @@ int main(int argc, char **argv)
 	audit_selected.count > 0 ? audit_run_selected() : audit_run_all();
 	audit_print_results();
 
-	return audit_state.failed_asserts == 0 ? 0 : -1;
+	return audit_state.failed_checks == 0 ? 0 : -1;
 }
 
 #endif // AUDIT_IMPLEMENTATION
