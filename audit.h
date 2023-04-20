@@ -1,11 +1,38 @@
-#ifndef INCLUDE_AUDIT_H
-#define INCLUDE_AUDIT_H
+/*
+MIT License
+
+Copyright (c) 2023 Cassio Koshikumo
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
 
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifndef INCLUDE_AUDIT_H
+#define INCLUDE_AUDIT_H
+
+
 
 #ifndef AUDIT_PASS_CHECK_STR
 #define AUDIT_PASS_CHECK_STR "."
@@ -47,6 +74,7 @@
 #define AUDIT_INITIAL_N_MESSAGES 100
 #endif
 
+
 // INTERFACE:
 #define audit(...) _audit_def(audit_, _audit_narg(__VA_ARGS__))(__VA_ARGS__)
 
@@ -63,6 +91,11 @@
 #define check_gt(_lhs, _rhs, _fmt, _desc) _check(>, _lhs, _rhs, _fmt, _desc, _audit_gt_msg)
 #define check_lteq(_lhs, _rhs, _fmt, _desc) _check(<=, _lhs, _rhs, _fmt, _desc, _audit_lteq_msg)
 #define check_gteq(_lhs, _rhs, _fmt, _desc) _check(>=, _lhs, _rhs, _fmt, _desc, _audit_gteq_msg)
+
+
+
+
+
 
 // INTERNALS:
 #define _check(_cmp, _lhs, _rhs, _fmt, _desc, _msg)                                                \
@@ -152,9 +185,12 @@ void _audit_register(char *name, audit_test_fn fn, audit_setup_fn st, audit_tear
 void _audit_store_message(const char *fmt, ...);
 void _audit_store_result(bool res);
 
-#endif // INCLUDE_AUDIT_H
+#endif //INCLUDE_AUDIT_H
+
 
 #ifdef AUDIT_IMPLEMENTATION
+
+
 
 struct audit_state_s audit_state = {.first_failed_check = true};
 
@@ -177,6 +213,7 @@ struct audit_messages_s {
 	size_t count, max;
 	char **data;
 } audit_messages = {.max = AUDIT_INITIAL_N_MESSAGES};
+
 
 #define audit_ensure_capacity(_name)                                                               \
 	do {                                                                                       \
@@ -356,6 +393,10 @@ __attribute__((constructor)) static void audit_init(void)
 		exit(EXIT_FAILURE);
 	}
 }
+
+
+
+
 int main(int argc, char **argv)
 {
 	atexit(audit_free_resources);
@@ -383,4 +424,4 @@ int main(int argc, char **argv)
 	return audit_state.failed_checks == 0 ? 0 : -1;
 }
 
-#endif // AUDIT_IMPLEMENTATION
+#endif //AUDIT_IMPLEMENTATION
