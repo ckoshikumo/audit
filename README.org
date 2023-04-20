@@ -250,6 +250,8 @@ There's also three defines related to the initial capacity of arrays that hold t
 * Future Plans
 These are some things I have in mind to enhance ~audit~.
 
+** TODO A test shouldn't blow up if no checks are defined in it
+
 ** TODO Implement scopes
 Grouping of ~audits~, for selecting multiple tests at once.
 
