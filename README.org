@@ -252,6 +252,9 @@ These are some things I have in mind to enhance ~audit~.
 
 ** TODO A test shouldn't blow up if no checks are defined in it
 
+** TODO Add file-level setup and teardown functions
+So that you don't have to pass them to every test, if every test uses the same functions.
+
 ** TODO Implement scopes
 Grouping of ~audits~, for selecting multiple tests at once.
 
