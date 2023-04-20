@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "limits": "cpp",
+        "audit.h": "c"
+    }
+}
