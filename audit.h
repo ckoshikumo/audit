@@ -10,7 +10,6 @@
 //
 // Customization
 //
-
 #ifndef AUDIT_PASS_CHECK_STR
 #define AUDIT_PASS_CHECK_STR "."
 #endif // AUDIT_PASS_CHECK_STR
@@ -105,12 +104,12 @@
 	audit_state.failed_checks++
 
 #define adt_audit_constructor(name, st, td, line)                              \
-	void adt_concat(adt_audit_, line)(adtAudit * this);                        \
+	static void adt_concat(adt_audit_, line)(adtAudit * this);                 \
 	__attribute__((constructor)) static void adt_concat(adt_init_,             \
 	                                                    line)(void) {          \
 		adt_register(name, adt_concat(adt_audit_, line), st, td);              \
 	}                                                                          \
-	void adt_concat(adt_audit_, line)(adtAudit * this)
+	static void adt_concat(adt_audit_, line)(adtAudit * this)
 
 /// Messages
 #define AUDIT_PRINT_OK(_str) AUDIT_COLOR_OK _str AUDIT_COLOR_RESET
