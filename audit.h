@@ -115,8 +115,6 @@
 #define _audit_gteq_msg(_lhs, _rhs, _fmt)                                      \
 	_audit_ineq_msg(">=", _lhs, _rhs, _fmt)
 
-// Maybe I could consolidate these with _audit_def, but I don't want to think
-// about it.
 #define _audit_concat_1(v1, v2) v1##v2
 #define _audit_concat(v1, v2) _audit_concat_1(v1, v2)
 
