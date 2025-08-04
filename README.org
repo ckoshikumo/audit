@@ -1,3 +1,6 @@
+* THIS README IS VERY OUTDATED.
+Will try to rewrite it soon. Mostly so I don't forget how this thing works, since I doubt anyone in their right mind would use this.
+
 *Audit* is a single-header unit-testing framework for C.
 
 * Features
